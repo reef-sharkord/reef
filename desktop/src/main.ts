@@ -1,4 +1,12 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  Menu,
+  nativeImage,
+  shell,
+  Tray
+} from 'electron';
 import { autoUpdater } from 'electron-updater';
 import * as path from 'node:path';
 
@@ -20,6 +28,52 @@ import * as path from 'node:path';
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173';
 
 let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
+// Closing the window hides to tray; only an explicit Quit (tray menu / app quit)
+// actually exits, so the app keeps running for notifications + voice.
+let isQuitting = false;
+
+const trayIconPath = () =>
+  path.join(__dirname, '../renderer/icon-192.png');
+
+const showWindow = () => {
+  if (!mainWindow) {
+    createWindow();
+    return;
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
+  mainWindow.show();
+  mainWindow.focus();
+};
+
+const setupTray = () => {
+  if (tray) {
+    return;
+  }
+
+  const image = nativeImage.createFromPath(trayIconPath());
+
+  tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image);
+  tray.setToolTip('Uncord');
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: 'Open Uncord', click: showWindow },
+      { type: 'separator' },
+      {
+        label: 'Quit Uncord',
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        }
+      }
+    ])
+  );
+  tray.on('click', showWindow);
+};
 
 const createWindow = () => {
   mainWindow = new BrowserWindow({
@@ -49,6 +103,14 @@ const createWindow = () => {
     // Bundled client (apps/client built with --base=./ into ../renderer).
     void mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
+
+  // Closing hides to the tray instead of quitting (unless we're really quitting).
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow?.hide();
+    }
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -83,23 +145,37 @@ const setupAutoUpdates = () => {
   void autoUpdater.checkForUpdatesAndNotify();
 };
 
-app.whenReady().then(() => {
-  ipcMain.handle('app:getVersion', () => app.getVersion());
-  // Triggered from the renderer (e.g. an in-app "Restart to update" button).
-  ipcMain.handle('update:quitAndInstall', () => autoUpdater.quitAndInstall());
+// Single-instance: a second launch focuses the existing window instead of
+// opening another copy.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
 
-  createWindow();
-  setupAutoUpdates();
+if (!gotSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', showWindow);
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+  app.on('before-quit', () => {
+    isQuitting = true;
   });
-});
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
+  app.whenReady().then(() => {
+    ipcMain.handle('app:getVersion', () => app.getVersion());
+    // Triggered from the renderer (e.g. an in-app "Restart to update" button).
+    ipcMain.handle('update:quitAndInstall', () => autoUpdater.quitAndInstall());
+
+    createWindow();
+    setupTray();
+    setupAutoUpdates();
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+      } else {
+        showWindow();
+      }
+    });
+  });
+
+  // With close-to-tray the app intentionally keeps running when all windows are
+  // closed; it only exits via the tray's Quit. So we do not quit here.
+}
