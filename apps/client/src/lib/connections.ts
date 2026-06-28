@@ -16,6 +16,7 @@ import {
   type ServerStore
 } from '@/features/store';
 import {
+  getLocalStorageItem,
   getSessionStorageItem,
   LocalStorageKey,
   removeLocalStorageItem,
@@ -76,6 +77,22 @@ export type RailServer = {
 const connections = new Map<string, ConnectionEntry>();
 const tokens = new Map<string, string>();
 let activeHost: string | null = null;
+
+/**
+ * Last server that dropped on an *unclean* close (e.g. mobile error 1006 when the
+ * tab is backgrounded). The foreground-resume controller reads this to re-run the
+ * full connect+join flow when the page comes back to the foreground. Intentional
+ * closes (clean logout, kick, ban) never set it, so we only auto-resume genuine
+ * transient drops. (UNCORD_PLAN.md §3.6)
+ */
+let resumeTarget: { host: string; token: string } | null = null;
+
+const getResumeTarget = (): { host: string; token: string } | null =>
+  resumeTarget;
+
+const clearResumeTarget = () => {
+  resumeTarget = null;
+};
 
 // Firefox fires WebSocket onClose during page refresh; Chrome does not. When
 // navigating away, we must not clear auto-login localStorage or it will be lost
@@ -142,6 +159,23 @@ const createEntry = (host: string): ConnectionEntry => {
     onClose: (cause: CloseEvent) => {
       const closing = connections.get(host);
       const closingStore = closing?.store;
+
+      // An unclean close is a transient network drop (mobile 1006, sleep, Wi-Fi
+      // flap) rather than an intentional logout/kick/ban. Stash this server's
+      // token so the foreground-resume controller can reconnect it without the
+      // user re-entering credentials. Capture before closeConnection wipes the
+      // token map. (UNCORD_PLAN.md §3.6)
+      if (cause && !cause.wasClean) {
+        const token =
+          tokens.get(host) ||
+          getSessionStorageItem(SessionStorageKey.TOKEN) ||
+          getLocalStorageItem(LocalStorageKey.AUTO_LOGIN_TOKEN) ||
+          '';
+
+        if (token) {
+          resumeTarget = { host, token };
+        }
+      }
 
       closeConnection(host);
 
@@ -341,11 +375,13 @@ const closeConnection = (host: string) => {
 };
 
 export {
+  clearResumeTarget,
   closeConnection,
   getActiveConnection,
   getActiveHost,
   getConnection,
   getRailServers,
+  getResumeTarget,
   openConnection,
   setActiveHost,
   setConnectionMeta,
