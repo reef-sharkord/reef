@@ -15,6 +15,7 @@ import {
   setActiveStore,
   type ServerStore
 } from '@/features/store';
+import { getHostFromServer } from '@/helpers/get-file-url';
 import {
   getLocalStorageItem,
   getSessionStorageItem,
@@ -218,12 +219,15 @@ const createEntry = (host: string): ConnectionEntry => {
     links: [wsLink({ client: wsClient })]
   });
 
-  // The primary (first/only) connection reuses the bootstrap store so
-  // single-server behaviour is identical; additional concurrent servers each
-  // get their own store. On reconnect the registry is empty again, so the
-  // primary server keeps reusing the bootstrap store. (UNCORD_PLAN.md §3.2)
+  // The primary server reuses the bootstrap store so single-server behaviour is
+  // identical and the pre-connection UI (which reads the proxy/bootstrap store)
+  // stays correct; every additional server gets its own store. Keying this on
+  // "is this the primary host" rather than "is this the first connection" makes
+  // it order-independent — restoring a saved secondary before the primary, or
+  // reconnecting the primary while secondaries are open, still assigns stores
+  // correctly. (UNCORD_PLAN.md §3.2)
   const store =
-    connections.size === 0 ? getBootstrapStore() : createServerStore();
+    host === getHostFromServer() ? getBootstrapStore() : createServerStore();
 
   const entry: ConnectionEntry = {
     host,

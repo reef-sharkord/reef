@@ -5,7 +5,19 @@ import {
   getHostFromServer,
   getUrlForHost
 } from '@/helpers/get-file-url';
-import { openConnection, setConnectionMeta } from '@/lib/connections';
+import {
+  closeConnection,
+  getConnection,
+  openConnection,
+  setActiveHost,
+  setConnectionMeta
+} from '@/lib/connections';
+import {
+  getSavedServers,
+  removeSavedServer,
+  upsertSavedServer,
+  type SavedServer
+} from '@/lib/saved-servers';
 import { cleanup, connectToTRPC, getTRPCClient } from '@/lib/trpc';
 import type { TMessageJumpToTarget } from '@/types';
 import { type TPublicServerSettings, type TServerInfo } from '@sharkord/shared';
@@ -137,12 +149,62 @@ export type TAddServerResult =
   | { ok: true }
   | { ok: false; errors: Record<string, string> };
 
+const iconUrlForHost = (url: string, info: TServerInfo): string | null =>
+  info.logo ? `${url}/public/${info.logo.name}` : null;
+
+/**
+ * Open a connection to `host` with an already-obtained `token` and run the
+ * normal handshake + join flow. Shared by `addServer` (after a fresh login) and
+ * `reconnectSavedServer` (using a persisted token). openConnection makes the
+ * host active and gives it its own store, so every dispatch below lands in that
+ * server's store. (UNCORD_PLAN.md §3.1/§3.2)
+ */
+const joinAddedHost = async (
+  host: string,
+  token: string,
+  info: TServerInfo,
+  url: string
+): Promise<TAddServerResult> => {
+  openConnection(host, { token });
+
+  // a freshly-created server store starts with appLoading/loadingPlugins=true
+  // (the boot loadApp flow only runs for the primary). Clear them so routing
+  // shows this server instead of a stuck loading screen.
+  store.dispatch(appSliceActions.setAppLoading(false));
+  store.dispatch(appSliceActions.setLoadingPlugins(false));
+
+  setConnectionMeta(host, {
+    name: info.name,
+    iconUrl: iconUrlForHost(url, info)
+  });
+
+  setInfo(info);
+
+  const trpc = getTRPCClient();
+  const { hasPassword, handshakeHash } = await trpc.others.handshake.query();
+
+  if (hasPassword) {
+    openDialog(Dialog.SERVER_PASSWORD, {
+      handshakeHash,
+      serverId: info.serverId
+    });
+
+    return { ok: true };
+  }
+
+  const { showWelcomeDialog } = await joinServer(handshakeHash);
+
+  if (showWelcomeDialog) {
+    openDialog(Dialog.WELCOME_PROFILE_SETUP);
+  }
+
+  return { ok: true };
+};
+
 /**
  * Add (connect to) an arbitrary server host for the multi-server rail: fetch its
- * /info, log in for a per-host token, open a connection (which becomes active
- * and gives it its own store), then run the normal handshake + join flow. The
- * join dispatches land in the new server's store because openConnection made it
- * active. (UNCORD_PLAN.md §3.1/§3.2, M1 step 4)
+ * /info, log in for a per-host token, then connect + join. On success the server
+ * is persisted so the rail restores it on the next launch. (M1 step 4 / M3)
  */
 export const addServer = async (
   params: TAddServerParams
@@ -177,42 +239,86 @@ export const addServer = async (
 
   const { token } = (await loginResponse.json()) as { token: string };
 
-  // open the connection (becomes active + seeds its token), then record its
-  // display metadata and info into its now-active store.
-  openConnection(host, { token });
+  const result = await joinAddedHost(host, token, info, url);
 
-  // a freshly-created server store starts with appLoading/loadingPlugins=true
-  // (the boot loadApp flow only runs for the primary). Clear them so routing
-  // shows this server instead of a stuck loading screen.
-  store.dispatch(appSliceActions.setAppLoading(false));
-  store.dispatch(appSliceActions.setLoadingPlugins(false));
-
-  setConnectionMeta(host, {
-    name: info.name,
-    iconUrl: info.logo ? `${url}/public/${info.logo.name}` : null
-  });
-
-  setInfo(info);
-
-  const trpc = getTRPCClient();
-  const { hasPassword, handshakeHash } = await trpc.others.handshake.query();
-
-  if (hasPassword) {
-    openDialog(Dialog.SERVER_PASSWORD, {
-      handshakeHash,
-      serverId: info.serverId
+  if (result.ok) {
+    upsertSavedServer({
+      host,
+      name: info.name,
+      iconUrl: iconUrlForHost(url, info),
+      token
     });
-
-    return { ok: true };
   }
 
-  const { showWelcomeDialog } = await joinServer(handshakeHash);
+  return result;
+};
 
-  if (showWelcomeDialog) {
-    openDialog(Dialog.WELCOME_PROFILE_SETUP);
+/**
+ * Reconnect a previously-saved secondary server on launch using its persisted
+ * token (no login round-trip). Failures are swallowed: an unreachable server or
+ * an expired token simply leaves the entry saved so the user can retry later,
+ * and never blocks the rest of the rail from loading. (M3)
+ */
+export const reconnectSavedServer = async (
+  saved: SavedServer
+): Promise<void> => {
+  if (getConnection(saved.host)) {
+    return;
   }
 
-  return { ok: true };
+  try {
+    const url = getUrlForHost(saved.host);
+    const infoResponse = await fetch(`${url}/info`);
+
+    if (!infoResponse.ok) {
+      return;
+    }
+
+    const info = (await infoResponse.json()) as TServerInfo;
+
+    await joinAddedHost(saved.host, saved.token, info, url);
+  } catch {
+    // token expired / server down — keep it saved and move on.
+  }
+};
+
+// Guards one-time restore across re-renders / React StrictMode remounts.
+let savedServersRestored = false;
+
+/**
+ * Restore all saved secondary servers, sequentially, then return focus to the
+ * primary. Runs once. Called after the primary's auto-login attempt settles so
+ * the primary claims the bootstrap store first and we never interleave joins.
+ * (M3)
+ */
+export const restoreSavedServers = async () => {
+  if (savedServersRestored) {
+    return;
+  }
+
+  savedServersRestored = true;
+
+  const primaryHost = getHostFromServer();
+  const saved = getSavedServers().filter((s) => s.host !== primaryHost);
+
+  for (const server of saved) {
+    await reconnectSavedServer(server);
+  }
+
+  // land the user on the primary server if it is connected, rather than on
+  // whichever secondary happened to be restored last.
+  if (getConnection(primaryHost)) {
+    setActiveHost(primaryHost);
+  }
+};
+
+/**
+ * Remove a server from the rail: tear down its connection and drop it from the
+ * persisted list so it does not come back on the next launch. (M3)
+ */
+export const removeServer = (host: string) => {
+  removeSavedServer(host);
+  closeConnection(host);
 };
 
 export const disconnectFromServer = () => {

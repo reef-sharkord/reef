@@ -1,4 +1,4 @@
-import { addServer } from '@/features/server/actions';
+import { addServer, removeServer } from '@/features/server/actions';
 import { useRailServers } from '@/hooks/use-connections';
 import { setActiveHost, type RailServer } from '@/lib/connections';
 import {
@@ -7,10 +7,14 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
   Group,
   Input
 } from '@sharkord/ui';
-import { Plus } from 'lucide-react';
+import { LogOut, Plus } from 'lucide-react';
 import { memo, useCallback, useState } from 'react';
 
 const initialsOf = (name: string) =>
@@ -29,38 +33,51 @@ const statusColor = (status: RailServer['status']) => {
 };
 
 const RailTile = memo(({ server }: { server: RailServer }) => (
-  <button
-    type="button"
-    onClick={() => setActiveHost(server.host)}
-    title={`${server.name} (${server.host})`}
-    className={`relative flex h-12 w-12 items-center justify-center overflow-visible rounded-2xl bg-muted text-sm font-semibold transition-all hover:rounded-xl ${
-      server.isActive ? 'rounded-xl ring-2 ring-primary' : ''
-    }`}
-  >
-    {server.iconUrl ? (
-      <img
-        src={server.iconUrl}
-        alt={server.name}
-        className="h-full w-full rounded-[inherit] object-cover"
-      />
-    ) : (
-      <span>{initialsOf(server.name)}</span>
-    )}
-    <span
-      className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background ${statusColor(
-        server.status
-      )}`}
-    />
-    {server.unreadCount > 0 && (
-      <span
-        className={`absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-background px-1 text-[10px] font-bold text-white ${
-          server.hasMentions ? 'bg-red-500' : 'bg-primary'
+  <ContextMenu>
+    <ContextMenuTrigger asChild>
+      <button
+        type="button"
+        onClick={() => setActiveHost(server.host)}
+        title={`${server.name} (${server.host})`}
+        className={`relative flex h-12 w-12 items-center justify-center overflow-visible rounded-2xl bg-muted text-sm font-semibold transition-all hover:rounded-xl ${
+          server.isActive ? 'rounded-xl ring-2 ring-primary' : ''
         }`}
       >
-        {server.unreadCount > 99 ? '99+' : server.unreadCount}
-      </span>
-    )}
-  </button>
+        {server.iconUrl ? (
+          <img
+            src={server.iconUrl}
+            alt={server.name}
+            className="h-full w-full rounded-[inherit] object-cover"
+          />
+        ) : (
+          <span>{initialsOf(server.name)}</span>
+        )}
+        <span
+          className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background ${statusColor(
+            server.status
+          )}`}
+        />
+        {server.unreadCount > 0 && (
+          <span
+            className={`absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-background px-1 text-[10px] font-bold text-white ${
+              server.hasMentions ? 'bg-red-500' : 'bg-primary'
+            }`}
+          >
+            {server.unreadCount > 99 ? '99+' : server.unreadCount}
+          </span>
+        )}
+      </button>
+    </ContextMenuTrigger>
+    <ContextMenuContent>
+      <ContextMenuItem
+        variant="destructive"
+        onSelect={() => removeServer(server.host)}
+      >
+        <LogOut className="mr-2 h-4 w-4" />
+        Remove server
+      </ContextMenuItem>
+    </ContextMenuContent>
+  </ContextMenu>
 ));
 
 const AddServerForm = memo(({ onClose }: { onClose: () => void }) => {

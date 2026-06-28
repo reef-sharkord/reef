@@ -33,7 +33,10 @@ export enum LocalStorageKey {
   BROWSER_NOTIFICATIONS_FOR_REPLIES = 'sharkord-browser-notifications-for-replies',
   LANGUAGE = 'sharkord-language',
   PLUGIN_SLOT_DEBUG = 'sharkord-plugin-slot-debug',
-  HIDE_OWN_SCREEN_SHARE = 'sharkord-hide-own-screen-share'
+  HIDE_OWN_SCREEN_SHARE = 'sharkord-hide-own-screen-share',
+  // Uncord multi-server rail: persisted list of added servers so the rail
+  // survives a reload. (UNCORD_PLAN.md §3.1, M3)
+  SAVED_SERVERS = 'uncord-saved-servers'
 }
 
 export enum SessionStorageKey {
