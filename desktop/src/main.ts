@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  globalShortcut,
   ipcMain,
   Menu,
   nativeImage,
@@ -10,6 +11,13 @@ import {
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import * as path from 'node:path';
+
+// Tiny 16x16 taskbar overlay dots (red = mention, indigo = unread). Embedded as
+// data URLs so they need no file bundling.
+const BADGE_MENTION_PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAFjSURBVDhPtVOvUwJBGL1INBqN/glGA8EhkSgUi4PFRJGEQQqYDEQCzDDMOGNzoADRMRFIFIegBWRv9+72jvPu28/5+DWydx7JN/Pae2+/b9+uYfwHEPEYEW+B8xfgfAScDxDxDhFPdW0EoeNcwWLx5XU6gaxU0C4W0SmX0Ws2EWYzAYw96J4d6CR/OOQ8m0UznY6l127bwNgbIqb2zKGUN8tez9INcZSNhgdCPO7MiHgSzucmz2Qi4r8YTqemUupsFQC+f++1WoEuSqKsVhGEeFoHcD6gi9JFSbQKBQTLel8HeJ4QuVxEdIiE7QQjqksXJFHk8whSzlcBynXrbr0eESWRVqbVty2cB5OJqYuSuOz3bUS83BRpGMDYs6zVvnVhHGldWntn3kyRAtv+PBSyMjP2Qf9lL2ATckSTBOOx6ZRKuG2GnjYZ/W5X0smx5t9QSl2Aab5SvVSV8n2XjEqpa137A4pvGK6FCiW8AAAAAElFTkSuQmCC';
+const BADGE_UNREAD_PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAFhSURBVDhPtVM9SwNBFEyZ0tLS0p9gaenPEEQJSEBEULuAVhIQRQIi+NEpQlBDxMomiJxNahGCRayU3N3eXTaXy3sjL16C2VzOygfTzcy+2dnNZP5jAEwD2FIeVZVHdaXoEUABwKzJHRutedlx6Ov+QUfHJ23sFQMclQLcVjpo2eQ6ioqmZjhykvUSOvk1haUVNxHVqvZctxwA2RGx1pyvPYXKFCShfKO18vlwKAYw03J6dm51nDwJzY+ezcxzfYMw5N27io5MUhpOz9vwfbruG0h2uSiTlIbCji8Gjb5Bp0Pu+sbki5sEmZ8NPKpLXSYhDZvbHrSmz3gDLl1e6TFSGiSyRB+0MN94j2yTlAbLCj0Ai3GRmYzrUvnsIuiaxCRIXIk9FMdbZH2fPv4yEbHjUFP+y4hBbDIlm7y+Rfb+QYBBM/K0RVirhYGcnCj+Pcy8oBQ9S71SVbfLbREyc87kfgMguDsTyotGoQAAAABJRU5ErkJggg==';
 
 /**
  * Uncord desktop shell (Electron).
@@ -76,7 +84,48 @@ const setupTray = () => {
   tray.on('click', showWindow);
 };
 
+// Taskbar overlay badge: a red dot for mentions, an indigo dot for plain
+// unreads, cleared when there's nothing. (Windows shows app badges as overlay
+// icons; setBadgeCount is a no-op there.)
+const setUnreadBadge = (count: number, hasMentions: boolean) => {
+  if (!mainWindow) {
+    return;
+  }
+
+  if (count <= 0) {
+    mainWindow.setOverlayIcon(null, '');
+    app.setBadgeCount(0);
+    return;
+  }
+
+  const image = nativeImage.createFromDataURL(
+    `data:image/png;base64,${hasMentions ? BADGE_MENTION_PNG : BADGE_UNREAD_PNG}`
+  );
+
+  mainWindow.setOverlayIcon(image, `${count} unread`);
+  app.setBadgeCount(count); // macOS/Linux dock badge
+};
+
+// Global media hotkeys: work even when Uncord is unfocused or in the tray. They
+// forward to the renderer, which toggles the active voice session via the
+// in-app voice bridge. (The renderer suppresses its own in-app handler on
+// desktop so these don't double-fire.)
+const registerGlobalShortcuts = () => {
+  globalShortcut.register('CommandOrControl+Shift+M', () => {
+    mainWindow?.webContents.send('hotkey:toggle-mic');
+  });
+  globalShortcut.register('CommandOrControl+Shift+D', () => {
+    mainWindow?.webContents.send('hotkey:toggle-deafen');
+  });
+};
+
+const shouldStartHidden = () =>
+  process.argv.includes('--hidden') ||
+  app.getLoginItemSettings().wasOpenedAsHidden;
+
 const createWindow = () => {
+  const startHidden = shouldStartHidden();
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 832,
@@ -84,6 +133,7 @@ const createWindow = () => {
     minHeight: 600,
     backgroundColor: '#171717',
     autoHideMenuBar: true,
+    show: !startHidden,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -174,13 +224,42 @@ if (!gotSingleInstanceLock) {
     isQuitting = true;
   });
 
+  app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
+  });
+
   app.whenReady().then(() => {
     ipcMain.handle('app:getVersion', () => app.getVersion());
     // Triggered from the renderer (e.g. an in-app "Restart to update" button).
     ipcMain.handle('update:quitAndInstall', () => autoUpdater.quitAndInstall());
+    // Renderer asks to bring the window forward (e.g. a notification click).
+    ipcMain.handle('window:focus', () => showWindow());
+    // Unread badge from the renderer (total across servers + mention flag).
+    ipcMain.handle('badge:set', (_event, count: number, hasMentions: boolean) =>
+      setUnreadBadge(count, hasMentions)
+    );
+    // Launch-at-login / start-in-tray settings.
+    ipcMain.handle('startup:get', () => {
+      const settings = app.getLoginItemSettings();
+      const openInTray = (settings.launchItems ?? []).some((item) =>
+        item.args?.includes('--hidden')
+      );
+
+      return { openAtLogin: settings.openAtLogin, openInTray };
+    });
+    ipcMain.handle(
+      'startup:set',
+      (_event, openAtLogin: boolean, openInTray: boolean) => {
+        app.setLoginItemSettings({
+          openAtLogin,
+          args: openInTray ? ['--hidden'] : []
+        });
+      }
+    );
 
     createWindow();
     setupTray();
+    registerGlobalShortcuts();
     setupAutoUpdates();
 
     app.on('activate', () => {

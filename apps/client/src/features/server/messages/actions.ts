@@ -6,8 +6,9 @@ import {
   threadSidebarDataSelector
 } from '@/features/app/selectors';
 import { getActiveStore, store } from '@/features/store';
+import { getDesktopApi } from '@/helpers/desktop';
 import { getFileUrl, getFileUrlForHost } from '@/helpers/get-file-url';
-import { getHostForStore } from '@/lib/connections';
+import { getHostForStore, setActiveHost } from '@/lib/connections';
 import {
   getPlainTextFromHtml,
   hasMention,
@@ -64,7 +65,17 @@ const sendBrowserNotification = (
       : getFileUrl(user.avatar)
     : undefined;
 
-  new Notification(title, { body, icon });
+  const notification = new Notification(title, { body, icon });
+
+  // Click focuses the app (desktop shell) and jumps to the originating server.
+  notification.onclick = () => {
+    void getDesktopApi()?.focusWindow();
+    window.focus();
+
+    if (boundHost) {
+      setActiveHost(boundHost);
+    }
+  };
 };
 
 const typingTimeouts: { [key: string]: NodeJS.Timeout } = {};

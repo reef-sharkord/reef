@@ -1,6 +1,7 @@
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { setAutoJoinLastChannel } from '@/features/app/actions';
 import { useAutoJoinLastChannel } from '@/features/app/hooks';
+import { isDesktop } from '@/helpers/desktop';
 import {
   Card,
   CardContent,
@@ -12,6 +13,7 @@ import {
 } from '@sharkord/ui';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DesktopStartupSettings } from './desktop-startup-settings';
 
 const Others = memo(() => {
   const { t } = useTranslation('settings');
@@ -37,6 +39,8 @@ const Others = memo(() => {
         <Group label={t('languageLabel')} description={t('languageDesc')}>
           <LanguageSwitcher />
         </Group>
+
+        {isDesktop() && <DesktopStartupSettings />}
       </CardContent>
     </Card>
   );

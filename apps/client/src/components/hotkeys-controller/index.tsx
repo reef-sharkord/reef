@@ -3,6 +3,7 @@ import {
   togglePluginSlotDebug
 } from '@/features/app/actions';
 import { getVoiceControlsBridge } from '@/components/voice-provider/controls-bridge';
+import { isDesktop } from '@/helpers/desktop';
 import { memo, useCallback, useEffect } from 'react';
 
 const HotkeysController = memo(() => {
@@ -14,8 +15,10 @@ const HotkeysController = memo(() => {
     // Global voice hotkeys: Ctrl+Shift+M toggles the mic, Ctrl+Shift+D toggles
     // deafen. They work regardless of which server is in view and are ignored
     // when not in a voice channel. `e.repeat` guards against key-hold retrigger.
-    // (UNCORD_PLAN.md M2)
-    if (e.ctrlKey && e.shiftKey && !e.repeat) {
+    // On the desktop shell these are handled by an OS-level globalShortcut
+    // instead (works when unfocused), so skip the in-app handler to avoid
+    // double-firing. (UNCORD_PLAN.md M2/M6)
+    if (e.ctrlKey && e.shiftKey && !e.repeat && !isDesktop()) {
       const bridge = getVoiceControlsBridge();
       const key = e.key.toLowerCase();
 

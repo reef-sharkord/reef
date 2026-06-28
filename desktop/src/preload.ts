@@ -20,7 +20,33 @@ const api = {
   },
   onUpdateDownloaded: (cb: (version: string) => void) => {
     ipcRenderer.on('update:downloaded', (_e, version: string) => cb(version));
-  }
+  },
+
+  // Bring the window forward (e.g. on notification click).
+  focusWindow: (): Promise<void> => ipcRenderer.invoke('window:focus'),
+
+  // Global media hotkeys fired from the main process.
+  onToggleMic: (cb: () => void) => {
+    ipcRenderer.on('hotkey:toggle-mic', () => cb());
+  },
+  onToggleDeafen: (cb: () => void) => {
+    ipcRenderer.on('hotkey:toggle-deafen', () => cb());
+  },
+
+  // Taskbar/dock unread badge.
+  setUnreadBadge: (count: number, hasMentions: boolean): Promise<void> =>
+    ipcRenderer.invoke('badge:set', count, hasMentions),
+
+  // Launch-at-login / start-in-tray.
+  getStartupSettings: (): Promise<{
+    openAtLogin: boolean;
+    openInTray: boolean;
+  }> => ipcRenderer.invoke('startup:get'),
+  setStartupSettings: (
+    openAtLogin: boolean,
+    openInTray: boolean
+  ): Promise<void> =>
+    ipcRenderer.invoke('startup:set', openAtLogin, openInTray)
 };
 
 contextBridge.exposeInMainWorld('uncordDesktop', api);

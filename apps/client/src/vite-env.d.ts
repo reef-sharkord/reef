@@ -13,6 +13,18 @@ declare global {
     onUpdateAvailable: (cb: (version: string) => void) => void;
     onUpdateProgress: (cb: (percent: number) => void) => void;
     onUpdateDownloaded: (cb: (version: string) => void) => void;
+    focusWindow: () => Promise<void>;
+    onToggleMic: (cb: () => void) => void;
+    onToggleDeafen: (cb: () => void) => void;
+    setUnreadBadge: (count: number, hasMentions: boolean) => Promise<void>;
+    getStartupSettings: () => Promise<{
+      openAtLogin: boolean;
+      openInTray: boolean;
+    }>;
+    setStartupSettings: (
+      openAtLogin: boolean,
+      openInTray: boolean
+    ) => Promise<void>;
   }
 
   interface Window {
