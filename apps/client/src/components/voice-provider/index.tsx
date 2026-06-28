@@ -1162,13 +1162,22 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
   useEffect(() => {
     setVoiceControlsBridge({
       setMicMuted: setMicMutedForBridge,
-      setSoundMuted: setSoundMutedForBridge
+      setSoundMuted: setSoundMutedForBridge,
+      toggleMic,
+      toggleSound,
+      isInVoice: currentVoiceChannelId !== undefined
     });
 
     return () => {
       clearVoiceControlsBridge();
     };
-  }, [setMicMutedForBridge, setSoundMutedForBridge]);
+  }, [
+    setMicMutedForBridge,
+    setSoundMutedForBridge,
+    toggleMic,
+    toggleSound,
+    currentVoiceChannelId
+  ]);
 
   useVoiceEvents({
     consume,
