@@ -1,4 +1,4 @@
-import { resetApp } from '@/features/app/actions';
+import { applyNotificationPrefs, resetApp } from '@/features/app/actions';
 import { resetDialogs } from '@/features/dialogs/actions';
 import { resetServerScreens } from '@/features/server-screens/actions';
 import { resetServerState, setDisconnectInfo } from '@/features/server/actions';
@@ -245,6 +245,10 @@ const createEntry = (host: string): ConnectionEntry => {
   // correctly. (UNCORD_PLAN.md §3.2)
   const store =
     host === getHostFromServer() ? getBootstrapStore() : createServerStore();
+
+  // Apply this server's own notification preferences (if it has overrides) so
+  // each server notifies independently of the others. (UNCORD_PLAN.md §3.5, M4)
+  applyNotificationPrefs(host, store);
 
   const entry: ConnectionEntry = {
     host,

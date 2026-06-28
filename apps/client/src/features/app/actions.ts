@@ -6,11 +6,17 @@ import {
   setLocalStorageItem,
   setLocalStorageItemBool
 } from '@/helpers/storage';
+import { getActiveHost } from '@/lib/connections';
+import {
+  getNotifPrefsOverride,
+  setNotifPref,
+  type TNotifPrefKey
+} from '@/lib/notification-prefs';
 import type { TMessageJumpToTarget } from '@/types';
 import type { TServerInfo } from '@sharkord/shared';
 import { toast } from 'sonner';
 import { markChannelAsRead, setInfo } from '../server/actions';
-import { store } from '../store';
+import { store, type ServerStore } from '../store';
 import {
   pluginSlotDebugSelector,
   voiceChatChannelIdSelector,
@@ -152,13 +158,73 @@ export const setAutoJoinLastChannel = (autoJoin: boolean) => {
 export const setSelectedDmChannelId = (channelId: number | undefined) =>
   store.dispatch(appSliceActions.setSelectedDmChannelId(channelId));
 
+// Persist a notification pref as a per-host override for the active server, so
+// each server's notification settings are independent. Falls back to the legacy
+// global key when there's no active host. (UNCORD_PLAN.md §3.5, M4)
+const persistNotifPref = (
+  key: TNotifPrefKey,
+  legacyKey: LocalStorageKey,
+  enabled: boolean
+) => {
+  const host = getActiveHost();
+
+  if (host) {
+    setNotifPref(host, key, enabled);
+  } else {
+    setLocalStorageItemBool(legacyKey, enabled);
+  }
+};
+
+/**
+ * Apply a host's per-server notification override into its store on connect.
+ * Hosts without an override keep the global defaults the slice already seeded.
+ */
+export const applyNotificationPrefs = (host: string, target: ServerStore) => {
+  const override = getNotifPrefsOverride(host);
+
+  if (!override) {
+    return;
+  }
+
+  if (override.browserNotifications !== undefined) {
+    target.dispatch(
+      appSliceActions.setBrowserNotifications(override.browserNotifications)
+    );
+  }
+  if (override.browserNotificationsForMentions !== undefined) {
+    target.dispatch(
+      appSliceActions.setBrowserNotificationsForMentions(
+        override.browserNotificationsForMentions
+      )
+    );
+  }
+  if (override.browserNotificationsForDms !== undefined) {
+    target.dispatch(
+      appSliceActions.setBrowserNotificationsForDms(
+        override.browserNotificationsForDms
+      )
+    );
+  }
+  if (override.browserNotificationsForReplies !== undefined) {
+    target.dispatch(
+      appSliceActions.setBrowserNotificationsForReplies(
+        override.browserNotificationsForReplies
+      )
+    );
+  }
+};
+
 export const setBrowserNotifications = async (enabled: boolean) => {
   if (enabled) {
     await assertNotificationsPermission();
   }
 
   store.dispatch(appSliceActions.setBrowserNotifications(enabled));
-  setLocalStorageItemBool(LocalStorageKey.BROWSER_NOTIFICATIONS, enabled);
+  persistNotifPref(
+    'browserNotifications',
+    LocalStorageKey.BROWSER_NOTIFICATIONS,
+    enabled
+  );
 };
 
 export const setBrowserNotificationsForMentions = async (enabled: boolean) => {
@@ -167,7 +233,8 @@ export const setBrowserNotificationsForMentions = async (enabled: boolean) => {
   }
 
   store.dispatch(appSliceActions.setBrowserNotificationsForMentions(enabled));
-  setLocalStorageItemBool(
+  persistNotifPref(
+    'browserNotificationsForMentions',
     LocalStorageKey.BROWSER_NOTIFICATIONS_FOR_MENTIONS,
     enabled
   );
@@ -179,7 +246,8 @@ export const setBrowserNotificationsForDms = async (enabled: boolean) => {
   }
 
   store.dispatch(appSliceActions.setBrowserNotificationsForDms(enabled));
-  setLocalStorageItemBool(
+  persistNotifPref(
+    'browserNotificationsForDms',
     LocalStorageKey.BROWSER_NOTIFICATIONS_FOR_DMS,
     enabled
   );
@@ -191,7 +259,8 @@ export const setBrowserNotificationsForReplies = async (enabled: boolean) => {
   }
 
   store.dispatch(appSliceActions.setBrowserNotificationsForReplies(enabled));
-  setLocalStorageItemBool(
+  persistNotifPref(
+    'browserNotificationsForReplies',
     LocalStorageKey.BROWSER_NOTIFICATIONS_FOR_REPLIES,
     enabled
   );

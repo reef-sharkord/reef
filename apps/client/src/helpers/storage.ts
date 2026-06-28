@@ -36,7 +36,10 @@ export enum LocalStorageKey {
   HIDE_OWN_SCREEN_SHARE = 'sharkord-hide-own-screen-share',
   // Uncord multi-server rail: persisted list of added servers so the rail
   // survives a reload. (UNCORD_PLAN.md §3.1, M3)
-  SAVED_SERVERS = 'uncord-saved-servers'
+  SAVED_SERVERS = 'uncord-saved-servers',
+  // Uncord per-host notification preference overrides, so each server's
+  // notification settings are independent. (UNCORD_PLAN.md §3.5, M4)
+  NOTIFICATION_PREFS = 'uncord-notification-prefs'
 }
 
 export enum SessionStorageKey {
