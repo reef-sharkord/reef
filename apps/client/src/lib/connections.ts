@@ -13,6 +13,12 @@ import {
 } from '@/helpers/storage';
 import { type AppRouter, type TConnectionParams } from '@sharkord/shared';
 import { createTRPCProxyClient, createWSClient, wsLink } from '@trpc/client';
+import {
+  createServerStore,
+  getBootstrapStore,
+  setActiveStore,
+  type ServerStore
+} from '@/features/store';
 
 /**
  * Connection registry — owns every server connection the client holds.
@@ -39,6 +45,7 @@ export type ConnectionEntry = {
   host: string;
   wsClient: WSClient;
   trpc: TRPCClient;
+  store: ServerStore;
   status: ConnectionStatus;
 };
 
@@ -97,7 +104,13 @@ const createEntry = (host: string): ConnectionEntry => {
     links: [wsLink({ client: wsClient })]
   });
 
-  return { host, wsClient, trpc, status: 'connecting' };
+  // The primary (first/only) connection reuses the bootstrap store so
+  // single-server behaviour is identical; additional concurrent servers each
+  // get their own store. On reconnect the registry is empty again, so the
+  // primary server keeps reusing the bootstrap store. (UNCORD_PLAN.md §3.2)
+  const store = connections.size === 0 ? getBootstrapStore() : createServerStore();
+
+  return { host, wsClient, trpc, store, status: 'connecting' };
 };
 
 /**
@@ -109,12 +122,14 @@ const openConnection = (host: string): TRPCClient => {
 
   if (existing) {
     activeHost = host;
+    setActiveStore(existing.store);
     return existing.trpc;
   }
 
   const entry = createEntry(host);
   connections.set(host, entry);
   activeHost = host;
+  setActiveStore(entry.store);
 
   return entry.trpc;
 };
@@ -128,8 +143,11 @@ const getActiveConnection = (): ConnectionEntry | undefined =>
 const getActiveHost = (): string | null => activeHost;
 
 const setActiveHost = (host: string) => {
-  if (connections.has(host)) {
+  const entry = connections.get(host);
+
+  if (entry) {
     activeHost = host;
+    setActiveStore(entry.store);
   }
 };
 
@@ -151,7 +169,14 @@ const closeConnection = (host: string) => {
   }
 
   if (activeHost === host) {
-    activeHost = null;
+    // hand active status to a remaining connection if there is one, otherwise
+    // fall back to the bootstrap store so the proxy always points somewhere.
+    const next = connections.values().next().value as
+      | ConnectionEntry
+      | undefined;
+
+    activeHost = next?.host ?? null;
+    setActiveStore(next?.store ?? getBootstrapStore());
   }
 
   if (isCleaningUp) {
