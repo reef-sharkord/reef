@@ -12,6 +12,7 @@ import { GlobalErrorBoundary } from './components/error-boundary/global-error-bo
 import { HotkeysController } from './components/hotkeys-controller/index.tsx';
 import { PluginsController } from './components/plugins-controller/index.tsx';
 import { AutoLoginController } from './components/routing/auto-login-controller.tsx';
+import { BackgroundConnectionController } from './components/routing/background-connection-controller.tsx';
 import { ForegroundResumeController } from './components/routing/foreground-resume-controller.tsx';
 import { SavedServersController } from './components/routing/saved-servers-controller.tsx';
 import { Routing } from './components/routing/index.tsx';
@@ -51,6 +52,7 @@ createRoot(document.getElementById('root')!).render(
             <AutoLoginController />
             <ForegroundResumeController />
             <SavedServersController />
+            <BackgroundConnectionController />
             <UpdateNotifier />
             <VoiceStoreProvider>
               <VoiceProvider>

@@ -1,0 +1,21 @@
+{
+  "name": "uncord-background-connection",
+  "version": "0.0.1",
+  "description": "Foreground service that keeps Uncord's server connections alive while the app is backgrounded (Android).",
+  "main": "index.js",
+  "module": "index.js",
+  "types": "index.d.ts",
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": "^6.0.0"
+  },
+  "files": [
+    "android/",
+    "index.js",
+    "index.d.ts"
+  ]
+}

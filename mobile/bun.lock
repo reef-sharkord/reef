@@ -7,6 +7,7 @@
       "dependencies": {
         "@capacitor/android": "^6.2.0",
         "@capacitor/core": "^6.2.0",
+        "uncord-background-connection": "file:plugins/background-connection",
       },
       "devDependencies": {
         "@capacitor/cli": "^6.2.0",
@@ -176,6 +177,8 @@
     "tree-kill": ["tree-kill@1.2.2", "", { "bin": { "tree-kill": "cli.js" } }, "sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A=="],
 
     "tslib": ["tslib@2.8.1", "", {}, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
+
+    "uncord-background-connection": ["uncord-background-connection@file:plugins/background-connection", { "peerDependencies": { "@capacitor/core": "^6.0.0" } }],
 
     "undici-types": ["undici-types@8.3.0", "", {}, "sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ=="],
 
