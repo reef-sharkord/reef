@@ -24,18 +24,33 @@ $env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
 
 $mobile = Split-Path -Parent $PSCommandPath
 $bun = Join-Path $env:USERPROFILE '.bun\bin\bun.exe'
+$client = Resolve-Path (Join-Path $mobile '..\apps\client')
 
-Write-Host "Building standalone web bundle + syncing Capacitor..."
+# Build the standalone web bundle straight into mobile/www. Run from apps/client
+# with `bun run vite` so vite resolves from the client's node_modules (a bare
+# `cd ... && vite` from the mobile package fails to find vite, which previously
+# left a STALE www packaged into the APK). Hard-fail if the web build fails.
+Write-Host "Building standalone web bundle..."
+$env:VITE_STANDALONE = 'true'
+Push-Location $client
+& $bun run vite build --base=./ --outDir ../../mobile/www --emptyOutDir
+$webExit = $LASTEXITCODE
+Pop-Location
+if ($webExit -ne 0) { throw "Web build failed (exit $webExit); aborting APK build." }
+
+Write-Host "Syncing Capacitor..."
 Push-Location $mobile
-& $bun run build:web
 & $bun x cap sync android
+if ($LASTEXITCODE -ne 0) { Pop-Location; throw "cap sync failed; aborting." }
 Pop-Location
 
 $task = if ($Release) { 'assembleRelease' } else { 'assembleDebug' }
 Write-Host "Running gradle $task ..."
 Push-Location (Join-Path $mobile 'android')
 & .\gradlew.bat $task --no-daemon
+$gradleExit = $LASTEXITCODE
 Pop-Location
+if ($gradleExit -ne 0) { throw "Gradle $task failed (exit $gradleExit)." }
 
 $variant = if ($Release) { 'release' } else { 'debug' }
 Write-Host "APK: $mobile\android\app\build\outputs\apk\$variant\"

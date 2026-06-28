@@ -4,7 +4,7 @@
   "private": true,
   "description": "Uncord mobile shell (Capacitor / Android APK)",
   "scripts": {
-    "build:web": "cd ../apps/client && cross-env VITE_STANDALONE=true vite build --base=./ --outDir ../../mobile/www --emptyOutDir",
+    "build:web": "cd ../apps/client && cross-env VITE_STANDALONE=true bun run vite build --base=./ --outDir ../../mobile/www --emptyOutDir",
     "add:android": "cap add android",
     "sync": "npm run build:web && cap sync android",
     "open": "cap open android",
