@@ -17,6 +17,7 @@ import { SavedServersController } from './components/routing/saved-servers-contr
 import { Routing } from './components/routing/index.tsx';
 import { ServerScreensProvider } from './components/server-screens/index.tsx';
 import { ThemeProvider } from './components/theme-provider/index.tsx';
+import { UpdateNotifier } from './components/routing/update-notifier.tsx';
 import { VoiceProvider } from './components/voice-provider/index.tsx';
 import { VoiceStoreProvider } from './components/voice-provider/voice-store-provider.tsx';
 import { exposePluginStore } from './features/server/plugins/plugin-store.ts';
@@ -50,6 +51,7 @@ createRoot(document.getElementById('root')!).render(
             <AutoLoginController />
             <ForegroundResumeController />
             <SavedServersController />
+            <UpdateNotifier />
             <VoiceStoreProvider>
               <VoiceProvider>
                 <Routing />

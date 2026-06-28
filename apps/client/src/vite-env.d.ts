@@ -3,11 +3,24 @@
 
 // Extend the Window interface for global functions
 declare global {
+  // Bridge exposed by the Electron desktop shell (desktop/src/preload.ts).
+  // Absent in the browser and mobile.
+  interface UncordDesktopApi {
+    isDesktop: boolean;
+    platform: string;
+    getVersion: () => Promise<string>;
+    quitAndInstallUpdate: () => Promise<void>;
+    onUpdateAvailable: (cb: (version: string) => void) => void;
+    onUpdateProgress: (cb: (percent: number) => void) => void;
+    onUpdateDownloaded: (cb: (version: string) => void) => void;
+  }
+
   interface Window {
     useToken: (token: string) => Promise<void>;
     openSoundsModal?: () => void;
     printVoiceStats?: () => void;
     DEBUG?: boolean;
+    uncordDesktop?: UncordDesktopApi;
 
     // plugin store exposed for plugins to use imperatively
     __SHARKORD_STORE__: import('@sharkord/shared').TPluginStore;
