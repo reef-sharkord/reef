@@ -130,7 +130,7 @@ const Connect = memo(() => {
           <CardTitle className="flex flex-col items-center gap-2 text-center">
             <img
               src={logoSrc}
-              alt="Sharkord"
+              alt="Uncord"
               className="block max-h-32 max-w-full rounded-[5px]"
             />
             {info?.name && (

@@ -67,7 +67,13 @@ export const addMessages = (
   channelId: number,
   messages: TJoinedMessage[],
   opts: { prepend?: boolean } = {},
-  isSubscriptionMessage = false
+  isSubscriptionMessage = false,
+  // Whether the bound server is the one the user is actively viewing. For a
+  // backgrounded server in the multi-server rail this is false, so its incoming
+  // messages notify (and don't auto-mark-read) even though that server's own
+  // store still has a "selected channel". (UNCORD_PLAN.md §3.5) Defaults to true
+  // to preserve single-server behaviour for non-subscription callers.
+  isActiveServer = true
 ) => {
   const rootMessages = messages.filter((m) => !m.parentMessageId);
   const threadReplies = messages.filter((m) => !!m.parentMessageId);
@@ -133,6 +139,12 @@ export const addMessages = (
 
     const isWindowHidden = document?.hidden;
 
+    // A message is only truly "in front of the user" when it lands on the server
+    // they're actively viewing, in a visible channel, with the window focused.
+    // A backgrounded server is never in the foreground, so it always notifies.
+    const isChannelInForeground =
+      isActiveServer && isChannelTextVisible && !isWindowHidden;
+
     if (!isFromOwnUser) {
       const isThreadReply = !!targetMessage.parentMessageId;
 
@@ -147,8 +159,9 @@ export const addMessages = (
         playSound(SoundType.MESSAGE_RECEIVED);
       }
 
-      // only send browser notifications if the user is not currently viewing this channel
-      if (!isChannelTextVisible || isWindowHidden) {
+      // only send browser notifications if the user is not currently viewing
+      // this channel on the foreground server
+      if (!isChannelInForeground) {
         const channel = channelByIdSelector(state, channelId);
         const isDmChannel = !!channel?.isDm;
         const hasDmNotificationsEnabled =
@@ -181,7 +194,12 @@ export const addMessages = (
       }
     }
 
-    if (isChannelTextVisible && !isFromOwnUser && rootMessages.length > 0) {
+    if (
+      isActiveServer &&
+      isChannelTextVisible &&
+      !isFromOwnUser &&
+      rootMessages.length > 0
+    ) {
       markChannelAsRead(channelId, true);
     }
   }

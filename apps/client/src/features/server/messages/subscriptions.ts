@@ -1,6 +1,7 @@
 import type { ServerSubscriptor } from '@/features/server/subscriptions';
 import { runWithActiveStore } from '@/features/store';
 import { logDebug } from '@/helpers/browser-logger';
+import { getActiveConnection } from '@/lib/connections';
 import type { TJoinedMessage } from '@sharkord/shared';
 import {
   addMessages,
@@ -15,7 +16,9 @@ const subscribeToMessages: ServerSubscriptor = (trpc, store) => {
     onData: (message: TJoinedMessage) =>
       runWithActiveStore(store, () => {
         logDebug('[EVENTS] messages.onNew', { message });
-        addMessages(message.channelId, [message], {}, true);
+        // this server is in the foreground only if it is the active connection
+        const isActiveServer = getActiveConnection()?.store === store;
+        addMessages(message.channelId, [message], {}, true, isActiveServer);
       }),
     onError: (err) => console.error('onMessage subscription error:', err)
   });
