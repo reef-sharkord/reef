@@ -16,6 +16,7 @@ import { Connect } from '@/screens/connect';
 import { Disconnected } from '@/screens/disconnected';
 import { LoadingApp } from '@/screens/loading-app';
 import { ServerView } from '@/screens/server-view';
+import { Welcome } from '@/components/welcome';
 import { DisconnectCode } from '@sharkord/shared';
 import { memo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -84,16 +85,9 @@ const Routing = memo(() => {
 
   if (!activeConnection) {
     if (isStandalone()) {
-      // Native shells have no primary server: show the rail with an empty state
-      // so the user can add (or wait for restored) servers. (M6/M7)
-      return (
-        <div className="flex h-full w-full">
-          <Rail />
-          <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
-            {t('standaloneEmpty')}
-          </div>
-        </div>
-      );
+      // Native shells have no primary server: show the branded welcome / empty
+      // state so the user can add their first server. (M6/M7)
+      return <Welcome />;
     }
 
     if (isAppLoading || isPluginsLoading) {

@@ -13,5 +13,9 @@
   "loggingInAutomatically": "Logging in automatically...",
   "loadingApp": "Loading Uncord",
   "loadingPlugins": "Loading Plugins",
-  "standaloneEmpty": "Add a server with the + button to get started."
+  "standaloneEmpty": "Add a server with the + button to get started.",
+  "welcomeTitle": "Welcome to Uncord",
+  "welcomeSubtitle": "built on Sharkord",
+  "welcomeAddServer": "Add a server",
+  "welcomeHelp": "Enter a Sharkord server's address along with your username and password to connect. You can add and switch between as many servers as you like — they'll appear in the rail."
 }
