@@ -17,6 +17,7 @@
     "publish": "npm run build && electron-builder --publish always"
   },
   "dependencies": {
+    "electron-log": "^5.2.4",
     "electron-updater": "^6.3.9"
   },
   "trustedDependencies": [

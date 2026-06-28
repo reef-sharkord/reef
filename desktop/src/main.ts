@@ -8,6 +8,7 @@ import {
   Tray
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
+import log from 'electron-log';
 import * as path from 'node:path';
 
 /**
@@ -120,6 +121,21 @@ const createWindow = () => {
 const setupAutoUpdates = () => {
   if (!app.isPackaged) {
     return;
+  }
+
+  // Log update checks/downloads to electron-log (userData/logs/main.log) so
+  // failures are diagnosable in the field.
+  autoUpdater.logger = log;
+  log.transports.file.level = 'info';
+
+  // Optional runtime override of the update feed (e.g. point at a staging host
+  // or a local test server without rebuilding). Falls back to the baked-in
+  // electron-builder publish config.
+  const overrideUrl = process.env.UNCORD_UPDATE_URL;
+
+  if (overrideUrl) {
+    autoUpdater.setFeedURL({ provider: 'generic', url: overrideUrl });
+    log.info(`[auto-update] feed overridden -> ${overrideUrl}`);
   }
 
   autoUpdater.autoDownload = true;
