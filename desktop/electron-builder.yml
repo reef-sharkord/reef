@@ -25,7 +25,7 @@ publish:
 win:
   target:
     - nsis
-  artifactName: Uncord-Setup-${version}.${ext}
+    - portable
 
 nsis:
   oneClick: false
@@ -33,6 +33,10 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
+  artifactName: Uncord-Setup-${version}.${ext}
+
+portable:
+  artifactName: Uncord-Portable-${version}.${ext}
 
 mac:
   target:
