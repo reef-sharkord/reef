@@ -5,8 +5,9 @@ import {
   browserNotificationsSelector,
   threadSidebarDataSelector
 } from '@/features/app/selectors';
-import { store } from '@/features/store';
-import { getFileUrl } from '@/helpers/get-file-url';
+import { getActiveStore, store } from '@/features/store';
+import { getFileUrl, getFileUrlForHost } from '@/helpers/get-file-url';
+import { getHostForStore } from '@/lib/connections';
 import {
   getPlainTextFromHtml,
   hasMention,
@@ -53,7 +54,15 @@ const sendBrowserNotification = (
     : `${authorName} in #${channel?.name ?? 'unknown'}`;
 
   const body = textContent ? textContent : 'Sent an attachment';
-  const icon = user?.avatar ? getFileUrl(user.avatar) : undefined;
+  // Resolve the author avatar against the server this message belongs to (the
+  // bound store's host), not the active one — so notifications from a
+  // backgrounded server show the right avatar. (UNCORD_PLAN.md §3.5)
+  const boundHost = getHostForStore(getActiveStore());
+  const icon = user?.avatar
+    ? boundHost
+      ? getFileUrlForHost(boundHost, user.avatar)
+      : getFileUrl(user.avatar)
+    : undefined;
 
   new Notification(title, { body, icon });
 };

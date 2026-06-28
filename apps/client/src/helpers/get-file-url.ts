@@ -42,22 +42,41 @@ const getUrlForHost = (host: string) => {
   return `${secure ? 'https:' : 'http:'}//${host.replace(/\/+$/, '')}`;
 };
 
-const getFileUrl = (file: TFile | undefined | null) => {
-  if (!file) return '';
-
-  const url = getUrlFromServer();
-
-  let baseUrl = `${url}/public/${file.name}`;
+const buildFileUrl = (baseUrl: string, file: TFile) => {
+  let url = `${baseUrl}/public/${file.name}`;
 
   if (file._accessToken) {
-    baseUrl += `?accessToken=${file._accessToken}`;
+    url += `?accessToken=${file._accessToken}`;
 
     if (file._accessTokenExpiresAt) {
-      baseUrl += `&expires=${file._accessTokenExpiresAt}`;
+      url += `&expires=${file._accessTokenExpiresAt}`;
     }
   }
 
-  return encodeURI(baseUrl);
+  return encodeURI(url);
 };
 
-export { getFileUrl, getHostFromServer, getUrlForHost, getUrlFromServer };
+const getFileUrl = (file: TFile | undefined | null) => {
+  if (!file) return '';
+
+  return buildFileUrl(getUrlFromServer(), file);
+};
+
+/**
+ * Resolve a file URL against a specific server host rather than the active one.
+ * Used for cross-server assets (e.g. a notification avatar from a backgrounded
+ * server, which must resolve against that server's host). (UNCORD_PLAN.md §3.5)
+ */
+const getFileUrlForHost = (host: string, file: TFile | undefined | null) => {
+  if (!file) return '';
+
+  return buildFileUrl(getUrlForHost(host), file);
+};
+
+export {
+  getFileUrl,
+  getFileUrlForHost,
+  getHostFromServer,
+  getUrlForHost,
+  getUrlFromServer
+};

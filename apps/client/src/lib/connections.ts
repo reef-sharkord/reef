@@ -317,6 +317,21 @@ const openConnection = (
 const getConnection = (host: string): ConnectionEntry | undefined =>
   connections.get(host);
 
+/**
+ * The host whose connection owns `store`. Used by background (server-bound) code
+ * — e.g. a notification firing from a backgrounded server — to resolve that
+ * server's host without relying on the active-store proxy. (UNCORD_PLAN.md §3.5)
+ */
+const getHostForStore = (store: ServerStore): string | null => {
+  for (const entry of connections.values()) {
+    if (entry.store === store) {
+      return entry.host;
+    }
+  }
+
+  return null;
+};
+
 const getActiveConnection = (): ConnectionEntry | undefined =>
   activeHost ? connections.get(activeHost) : undefined;
 
@@ -405,6 +420,7 @@ export {
   getActiveConnection,
   getActiveHost,
   getConnection,
+  getHostForStore,
   getRailServers,
   getResumeTarget,
   openConnection,
