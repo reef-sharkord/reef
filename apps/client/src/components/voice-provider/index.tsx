@@ -57,6 +57,7 @@ import {
 import { ExternalAudioStreams } from '../channel-view/voice/external-audio-streams';
 import { VoiceAudioStreams } from '../channel-view/voice/voice-audio-streams';
 import { FloatingPinnedCard } from './floating-pinned-card';
+import { GlobalVoiceBar } from './global-voice-bar';
 import {
   getRemoteConsumerTypeKey,
   getSimulcastCodec,
@@ -1291,6 +1292,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
             localScreenShareStream={localScreenShareStream}
             localVideoStream={localVideoStream}
           />
+          <GlobalVoiceBar />
           {/* Children (the app/Routing) must read the normal active-store proxy,
               not the voice store this provider is bound to. (M2) */}
           <Provider store={store}>{children}</Provider>
