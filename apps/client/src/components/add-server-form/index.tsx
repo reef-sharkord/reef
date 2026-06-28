@@ -9,6 +9,7 @@ import {
   Input
 } from '@sharkord/ui';
 import { memo, useCallback, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * Modal to add (connect to) a server for the multi-server rail. Shared by the
@@ -45,9 +46,13 @@ const AddServerForm = memo(({ onClose }: { onClose: () => void }) => {
     }
   }, [host, identity, password, onClose]);
 
-  return (
+  // Render through a portal to document.body: when opened from the mobile rail
+  // drawer (which has a CSS transform for its slide animation), a nested
+  // `position: fixed` would be trapped inside the 72px rail instead of covering
+  // the screen. The portal escapes that transformed ancestor.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
       <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
@@ -92,7 +97,8 @@ const AddServerForm = memo(({ onClose }: { onClose: () => void }) => {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </div>,
+    document.body
   );
 });
 

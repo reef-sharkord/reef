@@ -1,3 +1,4 @@
+import { getActiveHost } from '@/lib/connections';
 import type { TFile } from '@sharkord/shared';
 import { isLocalHost, isStandalone } from './standalone';
 
@@ -59,7 +60,13 @@ const buildFileUrl = (baseUrl: string, file: TFile) => {
 const getFileUrl = (file: TFile | undefined | null) => {
   if (!file) return '';
 
-  return buildFileUrl(getUrlFromServer(), file);
+  // Resolve against the active server's host, not the app's own origin. In the
+  // native shells window.location is localhost/file://, so getUrlFromServer()
+  // would point image/avatar/emoji URLs at the app instead of the server.
+  const host = getActiveHost();
+  const base = host ? getUrlForHost(host) : getUrlFromServer();
+
+  return buildFileUrl(base, file);
 };
 
 /**
