@@ -1,4 +1,6 @@
+# Anchored to the top level so the generated Capacitor project is ignored but
+# version-controlled plugin native source under plugins/**/android is kept.
 node_modules/
-www/
-android/
-ios/
+/www/
+/android/
+/ios/

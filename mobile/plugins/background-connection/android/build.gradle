@@ -1,0 +1,30 @@
+// Capacitor local plugin. AGP is inherited from the host app's root project,
+// and ':capacitor-android' is wired in by `cap sync` via settings.gradle, so
+// this stays self-contained (no relative apply-from paths into node_modules).
+apply plugin: 'com.android.library'
+
+android {
+    namespace "com.uncord.bg"
+    compileSdk rootProject.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 34
+    defaultConfig {
+        minSdkVersion rootProject.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 22
+        targetSdkVersion rootProject.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 34
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    lint {
+        abortOnError false
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+    implementation "androidx.core:core:1.12.0"
+}
