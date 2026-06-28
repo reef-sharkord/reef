@@ -1,6 +1,7 @@
 import { addServer, removeServer } from '@/features/server/actions';
 import { useRailServers } from '@/hooks/use-connections';
 import { setActiveHost, type RailServer } from '@/lib/connections';
+import { cn } from '@/lib/utils';
 import {
   Button,
   Card,
@@ -162,12 +163,17 @@ const AddServerForm = memo(({ onClose }: { onClose: () => void }) => {
   );
 });
 
-const Rail = memo(() => {
+const Rail = memo(({ className }: { className?: string }) => {
   const servers = useRailServers();
   const [adding, setAdding] = useState(false);
 
   return (
-    <div className="flex h-full w-[72px] shrink-0 flex-col items-center gap-2 border-r bg-card py-3">
+    <div
+      className={cn(
+        'flex h-full w-[72px] shrink-0 flex-col items-center gap-2 border-r bg-card py-3',
+        className
+      )}
+    >
       {servers.map((server) => (
         <RailTile key={server.host} server={server} />
       ))}

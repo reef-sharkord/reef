@@ -1,5 +1,6 @@
 import { LeftSidebar } from '@/components/left-sidebar';
 import { ModViewSheet } from '@/components/mod-view-sheet';
+import { Rail } from '@/components/rail';
 import { Protect } from '@/components/protect';
 import { RightSidebar } from '@/components/right-sidebar';
 import { ThreadSidebar } from '@/components/thread-sidebar';
@@ -20,6 +21,9 @@ import { PreventBrowser } from './prevent-browser';
 const ServerView = memo(() => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileUsersOpen, setIsMobileUsersOpen] = useState(false);
+  // Stage 2 of the swipe-right gesture: the server rail. Hidden by default on
+  // mobile (always visible on desktop). (handoff: two-stage left→right swipe)
+  const [isRailOpen, setIsRailOpen] = useState(false);
   const [isDesktopRightSidebarOpen, setIsDesktopRightSidebarOpen] = useState(
     getLocalStorageItemBool(LocalStorageKey.RIGHT_SIDEBAR_STATE, true)
   );
@@ -37,26 +41,40 @@ const ServerView = memo(() => {
     );
   }, [isDesktopRightSidebarOpen]);
 
+  // Two-stage reveal: closed → channel list → server rail.
   const handleSwipeRight = useCallback(() => {
-    if (isMobileMenuOpen || isMobileUsersOpen) {
-      setIsMobileMenuOpen(false);
+    if (isMobileUsersOpen) {
       setIsMobileUsersOpen(false);
       return;
     }
 
-    setIsMobileMenuOpen(true);
+    if (!isMobileMenuOpen) {
+      setIsMobileMenuOpen(true);
+      return;
+    }
+
+    setIsRailOpen(true);
   }, [isMobileMenuOpen, isMobileUsersOpen]);
 
+  // Collapse in reverse: rail → channel list → closed (then the users sidebar).
   const handleSwipeLeft = useCallback(() => {
-    if (isMobileMenuOpen || isMobileUsersOpen) {
-      setIsMobileMenuOpen(false);
-      setIsMobileUsersOpen(false);
+    if (isRailOpen) {
+      setIsRailOpen(false);
+      return;
+    }
 
+    if (isMobileMenuOpen) {
+      setIsMobileMenuOpen(false);
+      return;
+    }
+
+    if (isMobileUsersOpen) {
+      setIsMobileUsersOpen(false);
       return;
     }
 
     setIsMobileUsersOpen(true);
-  }, [isMobileMenuOpen, isMobileUsersOpen]);
+  }, [isMobileMenuOpen, isMobileUsersOpen, isRailOpen]);
 
   const swipeHandlers = useSwipeGestures({
     onSwipeRight: handleSwipeRight,
@@ -106,6 +124,23 @@ const ServerView = memo(() => {
               isMobileMenuOpen
                 ? 'translate-x-0'
                 : '-translate-x-full md:translate-x-0'
+            )}
+          />
+
+          {/* Mobile rail — swipe-right stage 2, hidden on desktop (the rail is
+              always visible there via Routing). Slides in over the channel
+              drawer's left edge; tap the backdrop or swipe left to dismiss. */}
+          {isRailOpen && (
+            <div
+              className="md:hidden fixed inset-0 bg-black/50 z-[45]"
+              onClick={() => setIsRailOpen(false)}
+            />
+          )}
+
+          <Rail
+            className={cn(
+              'md:hidden fixed top-0 bottom-0 left-0 z-50 transition-transform duration-300 ease-in-out',
+              isRailOpen ? 'translate-x-0' : '-translate-x-full'
             )}
           />
 

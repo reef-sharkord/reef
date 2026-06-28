@@ -117,7 +117,9 @@ const Routing = memo(() => {
 
   return (
     <div className="flex h-full w-full">
-      <Rail />
+      {/* Desktop: rail is always visible. Mobile: it's hidden here and revealed
+          as the second stage of the swipe-right gesture inside ServerView. */}
+      <Rail className="hidden md:flex" />
       <div className="min-w-0 flex-1">
         <Provider store={activeConnection.store} key={activeHost ?? ''}>
           <ActiveServerScreen />
