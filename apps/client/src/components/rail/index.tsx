@@ -51,6 +51,15 @@ const RailTile = memo(({ server }: { server: RailServer }) => (
         server.status
       )}`}
     />
+    {server.unreadCount > 0 && (
+      <span
+        className={`absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-background px-1 text-[10px] font-bold text-white ${
+          server.hasMentions ? 'bg-red-500' : 'bg-primary'
+        }`}
+      >
+        {server.unreadCount > 99 ? '99+' : server.unreadCount}
+      </span>
+    )}
   </button>
 ));
 

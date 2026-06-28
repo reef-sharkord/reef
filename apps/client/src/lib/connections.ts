@@ -2,6 +2,10 @@ import { resetApp } from '@/features/app/actions';
 import { resetDialogs } from '@/features/dialogs/actions';
 import { resetServerScreens } from '@/features/server-screens/actions';
 import { resetServerState, setDisconnectInfo } from '@/features/server/actions';
+import {
+  serverHasUnreadMentionsSelector,
+  serverUnreadCountSelector
+} from '@/features/server/selectors';
 import { playSound } from '@/features/server/sounds/actions';
 import { SoundType } from '@/features/server/types';
 import {
@@ -52,6 +56,10 @@ export type ConnectionEntry = {
   store: ServerStore;
   meta: ConnectionMeta;
   status: ConnectionStatus;
+  unreadCount: number;
+  hasMentions: boolean;
+  // unsubscribe from this connection's store (summary tracking)
+  storeUnsub: () => void;
 };
 
 /** Read-only view of a connection for the rail UI. */
@@ -61,6 +69,8 @@ export type RailServer = {
   iconUrl: string | null;
   status: ConnectionStatus;
   isActive: boolean;
+  unreadCount: number;
+  hasMentions: boolean;
 };
 
 const connections = new Map<string, ConnectionEntry>();
@@ -90,7 +100,9 @@ const rebuildSnapshot = () => {
     name: entry.meta.name,
     iconUrl: entry.meta.iconUrl,
     status: entry.status,
-    isActive: entry.host === activeHost
+    isActive: entry.host === activeHost,
+    unreadCount: entry.unreadCount,
+    hasMentions: entry.hasMentions
   }));
 };
 
@@ -179,14 +191,37 @@ const createEntry = (host: string): ConnectionEntry => {
   const store =
     connections.size === 0 ? getBootstrapStore() : createServerStore();
 
-  return {
+  const entry: ConnectionEntry = {
     host,
     wsClient,
     trpc,
     store,
     meta: { name: host, iconUrl: null },
-    status: 'connecting'
+    status: 'connecting',
+    unreadCount: 0,
+    hasMentions: false,
+    storeUnsub: () => {}
   };
+
+  // Track this server's unread summary into the rail (cross-server badges, M4).
+  const updateSummary = () => {
+    const state = store.getState();
+    const unreadCount = serverUnreadCountSelector(state);
+    const hasMentions = serverHasUnreadMentionsSelector(state);
+
+    if (
+      unreadCount !== entry.unreadCount ||
+      hasMentions !== entry.hasMentions
+    ) {
+      entry.unreadCount = unreadCount;
+      entry.hasMentions = hasMentions;
+      notify();
+    }
+  };
+
+  entry.storeUnsub = store.subscribe(updateSummary);
+
+  return entry;
 };
 
 /**
@@ -258,6 +293,7 @@ const closeConnection = (host: string) => {
 
   if (entry) {
     entry.status = 'closed';
+    entry.storeUnsub();
     entry.wsClient.close();
     connections.delete(host);
   }

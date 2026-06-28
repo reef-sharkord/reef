@@ -8,6 +8,7 @@ import {
   channelReadStateByIdSelector,
   channelsByCategoryIdSelector,
   channelsReadStatesSelector,
+  channelsSelector,
   currentVoiceChannelIdSelector
 } from './channels/selectors';
 import { canViewChannel, hasUnreadMentionInMessages } from './helpers';
@@ -240,3 +241,32 @@ export const categoryHasUnreadMentionsSelector = createCachedSelector(
     });
   }
 )((_, categoryId: number) => categoryId);
+
+// Server-wide unread total (across all of this server's channels) — used by the
+// multi-server rail to badge each server. (UNCORD_PLAN.md §3.2, M4)
+export const serverUnreadCountSelector = createSelector(
+  [channelsSelector, channelsReadStatesSelector],
+  (channels, readStatesMap) =>
+    channels.reduce(
+      (total, channel) => total + (readStatesMap[channel.id] ?? 0),
+      0
+    )
+);
+
+// Whether any of this server's channels has an unread mention.
+export const serverHasUnreadMentionsSelector = createSelector(
+  [
+    channelsSelector,
+    channelsReadStatesSelector,
+    messagesMapSelector,
+    ownUserIdSelector
+  ],
+  (channels, readStatesMap, messagesMap, ownUserId) =>
+    channels.some((channel) =>
+      hasUnreadMentionInMessages(
+        readStatesMap[channel.id] ?? 0,
+        messagesMap[channel.id] ?? [],
+        ownUserId
+      )
+    )
+);
