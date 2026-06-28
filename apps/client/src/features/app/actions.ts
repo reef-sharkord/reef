@@ -1,5 +1,6 @@
 import { assertNotificationsPermission } from '@/helpers/assert-notifications-permission';
 import { getFileUrl, getUrlFromServer } from '@/helpers/get-file-url';
+import { isStandalone } from '@/helpers/standalone';
 import {
   LocalStorageKey,
   setLocalStorageItem,
@@ -80,6 +81,13 @@ export const fetchServerInfo = async (): Promise<TServerInfo | undefined> => {
 };
 
 export const loadApp = async () => {
+  if (isStandalone()) {
+    // Native shells have no primary server — boot straight to the rail and let
+    // the user add/restore servers. (UNCORD_PLAN.md M6/M7)
+    setAppLoading(false);
+    return;
+  }
+
   const info = await fetchServerInfo();
 
   if (!info) {

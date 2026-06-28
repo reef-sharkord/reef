@@ -16,6 +16,7 @@ import {
   type ServerStore
 } from '@/features/store';
 import { getHostFromServer } from '@/helpers/get-file-url';
+import { isLocalHost, isStandalone } from '@/helpers/standalone';
 import {
   getLocalStorageItem,
   getSessionStorageItem,
@@ -148,9 +149,25 @@ const setToken = (host: string, token: string) => {
 // ---- lifecycle ----------------------------------------------------------------
 
 const buildWsUrl = (host: string) => {
-  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  // Respect an explicit scheme on the stored host.
+  if (/^wss?:\/\//i.test(host)) {
+    return host;
+  }
+  if (/^https:\/\//i.test(host)) {
+    return host.replace(/^https/i, 'wss');
+  }
+  if (/^http:\/\//i.test(host)) {
+    return host.replace(/^http/i, 'ws');
+  }
 
-  return `${protocol}://${host}`;
+  // Bare host[:port]. In native shells the page is file:// / capacitor://, so
+  // default remote hosts to secure ws (localhost stays insecure); in the browser
+  // mirror the page protocol.
+  const secure = isStandalone()
+    ? !isLocalHost(host)
+    : window.location.protocol === 'https:';
+
+  return `${secure ? 'wss' : 'ws'}://${host}`;
 };
 
 const createEntry = (host: string): ConnectionEntry => {

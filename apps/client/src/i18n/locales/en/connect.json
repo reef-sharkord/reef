@@ -12,5 +12,6 @@
   "connectError": "Could not connect: {{message}}",
   "loggingInAutomatically": "Logging in automatically...",
   "loadingApp": "Loading Uncord",
-  "loadingPlugins": "Loading Plugins"
+  "loadingPlugins": "Loading Plugins",
+  "standaloneEmpty": "Add a server with the + button to get started."
 }

@@ -1,4 +1,5 @@
 import type { TFile } from '@sharkord/shared';
+import { isLocalHost, isStandalone } from './standalone';
 
 const getHostFromServer = () => {
   if (import.meta.env.MODE === 'development') {
@@ -31,9 +32,14 @@ const getUrlForHost = (host: string) => {
     return host.replace(/\/+$/, '');
   }
 
-  const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+  // In native shells the page protocol is file:// / capacitor://, so it can't
+  // tell us whether a bare remote host is TLS. Default remote hosts to https
+  // there (keep localhost on http); in the browser, mirror the page protocol.
+  const secure = isStandalone()
+    ? !isLocalHost(host)
+    : window.location.protocol === 'https:';
 
-  return `${protocol}//${host}`;
+  return `${secure ? 'https:' : 'http:'}//${host.replace(/\/+$/, '')}`;
 };
 
 const getFileUrl = (file: TFile | undefined | null) => {

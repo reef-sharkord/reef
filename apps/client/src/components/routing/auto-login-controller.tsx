@@ -11,6 +11,7 @@ import {
   setLocalStorageItemBool,
   setSessionStorageItem
 } from '@/helpers/storage';
+import { isStandalone } from '@/helpers/standalone';
 import { memo, useEffect, useRef } from 'react';
 
 const AutoLoginController = memo(() => {
@@ -22,13 +23,15 @@ const AutoLoginController = memo(() => {
 
   useEffect(() => {
     if (
+      isStandalone() ||
       isAppLoading ||
       isPluginsLoading ||
       isConnected ||
       disconnectInfo ||
       autoLoginAttempted.current
     ) {
-      // ignore if the app is not done loading, if we're already connected or in the process of connecting
+      // native shells have no primary server to auto-login to; otherwise ignore
+      // until loading is done / we're already connected or connecting.
       return;
     }
 

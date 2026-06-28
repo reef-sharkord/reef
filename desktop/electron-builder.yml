@@ -1,0 +1,47 @@
+appId: com.uncord.desktop
+productName: Uncord
+copyright: Copyright © Uncord
+
+directories:
+  output: release
+  buildResources: build
+
+# What gets packed into the app. The compiled Electron entrypoints plus the
+# built client (renderer/) produced by `npm run build:renderer`.
+files:
+  - dist-electron/**/*
+  - renderer/**/*
+  - package.json
+
+# Auto-update feed. electron-updater reads `latest.yml` + the installer from this
+# URL. Point it at any static host you control (S3 bucket, nginx, GitHub release
+# assets, etc.) and upload what `npm run dist` produces in release/. Replace the
+# placeholder before publishing.
+publish:
+  provider: generic
+  url: https://REPLACE_ME.example.com/uncord/desktop/
+  channel: latest
+
+win:
+  target:
+    - nsis
+  artifactName: Uncord-Setup-${version}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+mac:
+  target:
+    - dmg
+  category: public.app-category.social-networking
+  artifactName: Uncord-${version}.${ext}
+
+linux:
+  target:
+    - AppImage
+  category: Network
+  artifactName: Uncord-${version}.${ext}

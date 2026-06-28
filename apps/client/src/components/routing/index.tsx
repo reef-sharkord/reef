@@ -9,6 +9,7 @@ import {
   useIsConnected,
   useServerName
 } from '@/features/server/hooks';
+import { isStandalone } from '@/helpers/standalone';
 import { useRailServers } from '@/hooks/use-connections';
 import { getConnection } from '@/lib/connections';
 import { Connect } from '@/screens/connect';
@@ -82,6 +83,19 @@ const Routing = memo(() => {
   }, [activeConnection]);
 
   if (!activeConnection) {
+    if (isStandalone()) {
+      // Native shells have no primary server: show the rail with an empty state
+      // so the user can add (or wait for restored) servers. (M6/M7)
+      return (
+        <div className="flex h-full w-full">
+          <Rail />
+          <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-muted-foreground">
+            {t('standaloneEmpty')}
+          </div>
+        </div>
+      );
+    }
+
     if (isAppLoading || isPluginsLoading) {
       return (
         <LoadingApp

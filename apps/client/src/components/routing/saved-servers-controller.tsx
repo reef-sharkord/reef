@@ -1,5 +1,6 @@
 import { restoreSavedServers } from '@/features/server/actions';
 import { useIsConnected } from '@/features/server/hooks';
+import { isStandalone } from '@/helpers/standalone';
 import { memo, useEffect } from 'react';
 
 /**
@@ -12,7 +13,9 @@ const SavedServersController = memo(() => {
   const isConnected = useIsConnected();
 
   useEffect(() => {
-    if (isConnected) {
+    // Browser: wait for the primary to connect so it claims the bootstrap store
+    // first. Native shells have no primary, so restore immediately on mount.
+    if (isStandalone() || isConnected) {
       void restoreSavedServers();
     }
   }, [isConnected]);
