@@ -16,7 +16,7 @@ const Welcome = memo(() => {
     <div className="flex h-full w-full flex-col items-center justify-center gap-6 p-6 text-center">
       <img
         src={`${import.meta.env.BASE_URL}icon-192.png`}
-        alt="Uncord"
+        alt="REEF"
         className="h-20 w-20 rounded-3xl shadow-lg"
       />
 

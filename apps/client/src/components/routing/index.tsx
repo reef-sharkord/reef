@@ -43,7 +43,7 @@ const ActiveServerScreen = memo(() => {
   const serverName = useServerName();
 
   useEffect(() => {
-    document.title = serverName ? `${serverName} - Uncord` : 'Uncord';
+    document.title = serverName ? `${serverName} - REEF` : 'REEF';
   }, [serverName]);
 
   if (isAppLoading || isPluginsLoading) {
@@ -79,7 +79,7 @@ const Routing = memo(() => {
 
   useEffect(() => {
     if (!activeConnection) {
-      document.title = 'Uncord';
+      document.title = 'REEF';
     }
   }, [activeConnection]);
 

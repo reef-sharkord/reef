@@ -1,6 +1,6 @@
-appId: com.uncord.desktop
-productName: Uncord
-copyright: Copyright © Uncord
+appId: com.reef.desktop
+productName: REEF
+copyright: Copyright © REEF
 
 directories:
   output: release
@@ -19,7 +19,7 @@ files:
 # placeholder before publishing.
 publish:
   provider: generic
-  url: https://REPLACE_ME.example.com/uncord/desktop/
+  url: https://REPLACE_ME.example.com/reef/desktop/
   channel: latest
 
 win:
@@ -33,19 +33,19 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  artifactName: Uncord-Setup-${version}.${ext}
+  artifactName: REEF-Setup-${version}.${ext}
 
 portable:
-  artifactName: Uncord-Portable-${version}.${ext}
+  artifactName: REEF-Portable-${version}.${ext}
 
 mac:
   target:
     - dmg
   category: public.app-category.social-networking
-  artifactName: Uncord-${version}.${ext}
+  artifactName: REEF-${version}.${ext}
 
 linux:
   target:
     - AppImage
   category: Network
-  artifactName: Uncord-${version}.${ext}
+  artifactName: REEF-${version}.${ext}

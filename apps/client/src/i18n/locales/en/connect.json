@@ -11,11 +11,11 @@
   "inviteCode": "Invite code: {{code}}",
   "connectError": "Could not connect: {{message}}",
   "loggingInAutomatically": "Logging in automatically...",
-  "loadingApp": "Loading Uncord",
+  "loadingApp": "Loading REEF",
   "loadingPlugins": "Loading Plugins",
   "standaloneEmpty": "Add a server with the + button to get started.",
-  "welcomeTitle": "Welcome to Uncord",
-  "welcomeSubtitle": "built on Sharkord",
+  "welcomeTitle": "Welcome to REEF",
+  "welcomeSubtitle": "A Sharkord Lobby",
   "welcomeAddServer": "Add a server",
   "welcomeHelp": "Enter a Sharkord server's address along with your username and password to connect. You can add and switch between as many servers as you like — they'll appear in the rail."
 }

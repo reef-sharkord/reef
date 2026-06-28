@@ -33,7 +33,7 @@ public class ForegroundService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Uncord")
+                .setContentTitle("REEF")
                 .setContentText("Keeping your servers connected")
                 .setSmallIcon(getApplicationInfo().icon)
                 .setOngoing(true)

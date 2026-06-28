@@ -2,8 +2,8 @@
   "name": "uncord-desktop",
   "version": "0.0.1",
   "private": true,
-  "description": "Uncord desktop shell (auto-updating Electron app)",
-  "author": "Uncord",
+  "description": "REEF desktop shell (auto-updating Electron app)",
+  "author": "REEF",
   "main": "dist-electron/main.js",
   "scripts": {
     "postinstall": "bun scripts/patch-source-map-support.mjs",

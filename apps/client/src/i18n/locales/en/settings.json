@@ -39,7 +39,7 @@
   "autoJoinLastChannelLabel": "Auto-Join Last Channel",
   "autoJoinLastChannelDesc": "Automatically rejoin the last text channel on connect.",
   "launchOnStartupLabel": "Launch on Startup",
-  "launchOnStartupDesc": "Open Uncord automatically when you sign in to your computer.",
+  "launchOnStartupDesc": "Open REEF automatically when you sign in to your computer.",
   "startInTrayLabel": "Start Minimized to Tray",
   "startInTrayDesc": "When launched on startup, begin hidden in the system tray.",
   "languageLabel": "Interface Language",

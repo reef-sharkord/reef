@@ -1,6 +1,6 @@
 {
-  "appId": "com.uncord.app",
-  "appName": "Uncord",
+  "appId": "com.reef.app",
+  "appName": "REEF",
   "webDir": "www",
   "backgroundColor": "#171717",
   "android": {

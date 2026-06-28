@@ -67,13 +67,13 @@ const setupTray = () => {
   const image = nativeImage.createFromPath(trayIconPath());
 
   tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image);
-  tray.setToolTip('Uncord');
+  tray.setToolTip('REEF');
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: 'Open Uncord', click: showWindow },
+      { label: 'Open REEF', click: showWindow },
       { type: 'separator' },
       {
-        label: 'Quit Uncord',
+        label: 'Quit REEF',
         click: () => {
           isQuitting = true;
           app.quit();

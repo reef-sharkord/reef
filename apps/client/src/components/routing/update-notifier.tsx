@@ -18,7 +18,7 @@ const UpdateNotifier = memo(() => {
 
     api.onUpdateDownloaded((version) => {
       toast('Update ready', {
-        description: `Uncord ${version} will be installed. Restart to update now.`,
+        description: `REEF ${version} will be installed. Restart to update now.`,
         duration: Infinity,
         action: {
           label: 'Restart now',
