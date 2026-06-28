@@ -3,8 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "description": "Uncord desktop shell (auto-updating Electron app)",
+  "author": "Uncord",
   "main": "dist-electron/main.js",
   "scripts": {
+    "postinstall": "bun scripts/patch-source-map-support.mjs",
     "build:main": "tsc -p tsconfig.json",
     "build:renderer": "cd ../apps/client && cross-env VITE_STANDALONE=true vite build --base=./ --outDir ../../desktop/renderer --emptyOutDir",
     "build": "npm run build:renderer && npm run build:main",
@@ -17,6 +19,13 @@
   "dependencies": {
     "electron-updater": "^6.3.9"
   },
+  "trustedDependencies": [
+    "electron",
+    "electron-builder",
+    "app-builder-bin",
+    "7zip-bin",
+    "dmg-license"
+  ],
   "devDependencies": {
     "concurrently": "^9.1.0",
     "cross-env": "^7.0.3",
