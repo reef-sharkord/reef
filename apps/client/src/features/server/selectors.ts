@@ -242,10 +242,23 @@ export const categoryHasUnreadMentionsSelector = createCachedSelector(
   }
 )((_, categoryId: number) => categoryId);
 
-// Server-wide unread total (across all of this server's channels) — used by the
-// multi-server rail to badge each server. (UNCORD_PLAN.md §3.2, M4)
+// The server's regular (non-DM) channels the user can actually view — the same
+// visibility filter the category-level unread selectors apply, so the rail
+// badge matches the in-app unread UI and never counts DMs or channels the user
+// can't open. (review fix)
+const serverBadgeChannelsSelector = createSelector(
+  [channelsSelector, channelPermissionsSelector, isOwnUserOwnerSelector],
+  (channels, channelPermissions, isOwner) =>
+    channels.filter(
+      (channel) =>
+        !channel.isDm && canViewChannel(channel, channelPermissions, isOwner)
+    )
+);
+
+// Server-wide unread total (across this server's viewable channels) — used by
+// the multi-server rail to badge each server. (UNCORD_PLAN.md §3.2, M4)
 export const serverUnreadCountSelector = createSelector(
-  [channelsSelector, channelsReadStatesSelector],
+  [serverBadgeChannelsSelector, channelsReadStatesSelector],
   (channels, readStatesMap) =>
     channels.reduce(
       (total, channel) => total + (readStatesMap[channel.id] ?? 0),
@@ -253,10 +266,10 @@ export const serverUnreadCountSelector = createSelector(
     )
 );
 
-// Whether any of this server's channels has an unread mention.
+// Whether any of this server's viewable channels has an unread mention.
 export const serverHasUnreadMentionsSelector = createSelector(
   [
-    channelsSelector,
+    serverBadgeChannelsSelector,
     channelsReadStatesSelector,
     messagesMapSelector,
     ownUserIdSelector

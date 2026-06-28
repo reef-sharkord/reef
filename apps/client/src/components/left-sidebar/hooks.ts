@@ -4,7 +4,7 @@ import {
   useChannelsMap,
   useCurrentVoiceChannelId
 } from '@/features/server/channels/hooks';
-import { joinVoice } from '@/features/server/voice/actions';
+import { joinVoice, leaveVoice } from '@/features/server/voice/actions';
 import { useVoice } from '@/features/server/voice/hooks';
 import { getLocalStorageItemAsJSON, LocalStorageKey } from '@/helpers/storage';
 import { ChannelType } from '@sharkord/shared';
@@ -95,6 +95,10 @@ const useSelectChannel = () => {
         try {
           await init(response, channel.id);
         } catch {
+          // join.mutate already succeeded and pinned the voice session; if media
+          // init fails, fully leave so we don't strand a phantom pinned call
+          // (which would show a ghost voice bar on other servers). (review fix)
+          await leaveVoice({ reason: 'unknown' });
           setSelectedChannelId(undefined);
           toast.error('Failed to initialize voice connection');
         }

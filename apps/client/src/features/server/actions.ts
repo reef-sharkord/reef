@@ -7,6 +7,7 @@ import {
 } from '@/helpers/get-file-url';
 import {
   closeConnection,
+  getActiveHost,
   getConnection,
   openConnection,
   setActiveHost,
@@ -24,7 +25,7 @@ import { type TPublicServerSettings, type TServerInfo } from '@sharkord/shared';
 import { toast } from 'sonner';
 import { appSliceActions } from '../app/slice';
 import { openDialog } from '../dialogs/actions';
-import { store } from '../store';
+import { getActiveStore, runWithActiveStore, store } from '../store';
 import {
   channelReadStateByIdSelector,
   isChannelTextVisibleByIdSelector
@@ -105,32 +106,49 @@ export const connect = async () => {
     return;
   }
 
-  const { showWelcomeDialog } = await joinServer(handshakeHash);
+  const { showWelcomeDialog } = await joinServer(handshakeHash, undefined, host);
 
   if (showWelcomeDialog) {
     openDialog(Dialog.WELCOME_PROFILE_SETUP);
   }
 };
 
-export const joinServer = async (handshakeHash: string, password?: string) => {
-  const trpc = getTRPCClient();
+export const joinServer = async (
+  handshakeHash: string,
+  password?: string,
+  // The server being joined. Bind every dispatch/subscription/bundle-load to
+  // THIS connection rather than whatever is active when an await resolves, so a
+  // server switch mid-join (e.g. during launch restore) can't bind one server's
+  // data into another's store. Defaults to the active server (the password-
+  // dialog path, where the just-targeted server is active). (review fix)
+  host?: string
+) => {
+  const targetHost = host ?? getActiveHost() ?? undefined;
+  const connection = targetHost ? getConnection(targetHost) : undefined;
+  const trpc = connection?.trpc ?? getTRPCClient();
+  const targetStore = connection?.store ?? getActiveStore();
+
   const data = await trpc.others.joinServer.query({ handshakeHash, password });
 
   logDebug('joinServer', data);
 
   const { initSubscriptions } = await import('./subscriptions');
 
-  unsubscribeFromServer = initSubscriptions();
+  unsubscribeFromServer = initSubscriptions(connection ?? undefined);
 
-  store.dispatch(serverSliceActions.setInitialData(data));
-
-  setPluginCommands(data.commands);
+  runWithActiveStore(targetStore, () => {
+    store.dispatch(serverSliceActions.setInitialData(data));
+    setPluginCommands(data.commands);
+  });
 
   const components = await processPluginComponents(
-    data.pluginIdsWithComponents
+    data.pluginIdsWithComponents,
+    targetHost
   );
 
-  setPluginComponents(components);
+  runWithActiveStore(targetStore, () => {
+    setPluginComponents(components);
+  });
 
   return {
     showWelcomeDialog: data.showWelcomeDialog
@@ -192,7 +210,7 @@ const joinAddedHost = async (
     return { ok: true };
   }
 
-  const { showWelcomeDialog } = await joinServer(handshakeHash);
+  const { showWelcomeDialog } = await joinServer(handshakeHash, undefined, host);
 
   if (showWelcomeDialog) {
     openDialog(Dialog.WELCOME_PROFILE_SETUP);

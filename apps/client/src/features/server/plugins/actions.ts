@@ -1,6 +1,6 @@
 import { store } from '@/features/store';
 import { logDebug } from '@/helpers/browser-logger';
-import { getUrlFromServer } from '@/helpers/get-file-url';
+import { getUrlForHost, getUrlFromServer } from '@/helpers/get-file-url';
 import {
   CLIENT_ENTRY_FILE,
   PluginSlot,
@@ -38,14 +38,20 @@ export const addPluginComponents = (
 export const setPluginComponents = (components: TPluginComponentsMap) =>
   store.dispatch(serverSliceActions.setPluginComponents(components));
 
-export const processPluginComponents = async (pluginIds: string[]) => {
+export const processPluginComponents = async (
+  pluginIds: string[],
+  // The server these plugins belong to. Required for a backgrounded server, so
+  // its bundles load from ITS host, not the active/page host. (review fix)
+  host?: string
+) => {
   const componentsMap: TPluginComponentsMap = {};
+  const baseUrl = host ? getUrlForHost(host) : getUrlFromServer();
 
   for (const pluginId of pluginIds) {
     try {
       componentsMap[pluginId] = {};
 
-      const moduleUrl = `${getUrlFromServer()}/plugin-bundle/${pluginId}/${CLIENT_ENTRY_FILE}`;
+      const moduleUrl = `${baseUrl}/plugin-bundle/${pluginId}/${CLIENT_ENTRY_FILE}`;
 
       logDebug(
         `Dynamically importing plugin module for plugin ${pluginId} from URL:`,

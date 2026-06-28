@@ -173,6 +173,16 @@ const buildWsUrl = (host: string) => {
 const createEntry = (host: string): ConnectionEntry => {
   const wsClient = createWSClient({
     url: buildWsUrl(host),
+    onOpen: () => {
+      // Reflect the real socket lifecycle in the rail badge instead of the
+      // optimistic 'open' set at openConnection time. (review fix)
+      const entry = connections.get(host);
+
+      if (entry && entry.status !== 'open') {
+        entry.status = 'open';
+        notify();
+      }
+    },
     // @ts-expect-error - the onclose type is not correct in trpc
     onClose: (cause: CloseEvent) => {
       const closing = connections.get(host);
@@ -182,8 +192,11 @@ const createEntry = (host: string): ConnectionEntry => {
       // flap) rather than an intentional logout/kick/ban. Stash this server's
       // token so the foreground-resume controller can reconnect it without the
       // user re-entering credentials. Capture before closeConnection wipes the
-      // token map. (UNCORD_PLAN.md §3.6)
-      if (cause && !cause.wasClean) {
+      // token map. Only the PRIMARY auto-login server is auto-resumed, so only
+      // it may claim the single resume slot — otherwise a secondary's 1006 close
+      // (e.g. both sockets dropping when a mobile tab backgrounds) would clobber
+      // the primary's pending resume. (UNCORD_PLAN.md §3.6)
+      if (cause && !cause.wasClean && host === getHostFromServer()) {
         const token =
           tokens.get(host) ||
           getSessionStorageItem(SessionStorageKey.TOKEN) ||
@@ -307,7 +320,7 @@ const openConnection = (
   const entry = createEntry(host);
   connections.set(host, entry);
   activeHost = host;
-  entry.status = 'open';
+  // status stays 'connecting' until the WebSocket's onOpen fires.
   setActiveStore(entry.store);
   notify();
 

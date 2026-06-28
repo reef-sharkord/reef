@@ -44,10 +44,54 @@ const bootstrapStore = createServerStore();
 
 let activeStore: ServerStore = bootstrapStore;
 
+// --- switchable subscription layer -------------------------------------------
+// react-redux subscribes to `store` exactly once (the Proxy identity never
+// changes), so a naive passthrough would pin that single subscription to
+// whatever store was active at mount (the bootstrap store) and never re-render
+// outer-Provider consumers when the active store dispatches or switches. So the
+// proxy owns its own listener set and forwards notifications from the CURRENT
+// active store, re-pointing whenever the active store changes. (review fix:
+// dialogs/server-screens stale on secondary/standalone servers)
+const proxyListeners = new Set<() => void>();
+let forwarderUnsub: (() => void) | null = null;
+
+const repointForwarder = () => {
+  forwarderUnsub?.();
+  forwarderUnsub =
+    proxyListeners.size > 0
+      ? activeStore.subscribe(() => {
+          proxyListeners.forEach((listener) => listener());
+        })
+      : null;
+};
+
+const proxySubscribe = (listener: () => void) => {
+  proxyListeners.add(listener);
+
+  if (proxyListeners.size === 1) {
+    repointForwarder();
+  }
+
+  return () => {
+    proxyListeners.delete(listener);
+
+    if (proxyListeners.size === 0) {
+      repointForwarder();
+    }
+  };
+};
+
 const getBootstrapStore = (): ServerStore => bootstrapStore;
 const getActiveStore = (): ServerStore => activeStore;
 const setActiveStore = (next: ServerStore) => {
+  if (next === activeStore) {
+    return;
+  }
+
   activeStore = next;
+  // forward from the new active store and tell consumers the store swapped.
+  repointForwarder();
+  proxyListeners.forEach((listener) => listener());
 };
 
 /**
@@ -75,6 +119,13 @@ const runWithActiveStore = <T>(target: ServerStore, fn: () => T): T => {
 // for safety when handing functions to consumers like react-redux.
 const store = new Proxy({} as ServerStore, {
   get(_target, prop) {
+    // `subscribe` must go through the switchable layer so react-redux's single
+    // root subscription tracks the active store rather than being pinned to the
+    // store that was active at mount.
+    if (prop === 'subscribe') {
+      return proxySubscribe;
+    }
+
     const value = Reflect.get(activeStore, prop) as unknown;
 
     return typeof value === 'function' ? value.bind(activeStore) : value;

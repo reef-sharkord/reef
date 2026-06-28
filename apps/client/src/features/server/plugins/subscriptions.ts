@@ -1,6 +1,7 @@
 import type { ServerSubscriptor } from '@/features/server/subscriptions';
 import { runWithActiveStore } from '@/features/store';
 import { logDebug } from '@/helpers/browser-logger';
+import { getHostForStore } from '@/lib/connections';
 import {
   processPluginComponents,
   setPluginCommands,
@@ -9,6 +10,8 @@ import {
 } from './actions';
 
 const subscribeToPlugins: ServerSubscriptor = (trpc, store) => {
+  // Resolve plugin bundles from THIS server's host, not the active one.
+  const host = getHostForStore(store) ?? undefined;
   const onCommandsChangeSub = trpc.plugins.onCommandsChange.subscribe(
     undefined,
     {
@@ -26,7 +29,7 @@ const subscribeToPlugins: ServerSubscriptor = (trpc, store) => {
     undefined,
     {
       onData: async (data) => {
-        const components = await processPluginComponents(data);
+        const components = await processPluginComponents(data, host);
 
         runWithActiveStore(store, () => {
           logDebug('[EVENTS] plugins.onComponentsChange', { data, components });

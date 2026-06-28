@@ -39,4 +39,42 @@ const VoiceAudioStreams = memo(({ channelId }: TVoiceAudioStreamsProps) => {
   );
 });
 
-export { VoiceAudioStreams };
+// Remote screen-share audio sink. Lives in the global persistent sink (not the
+// per-channel grid card) so screen-share audio keeps playing when you navigate
+// to another server, like mic audio does. (review fix, M2)
+const VoiceUserScreenShareAudio = memo(
+  ({ userId }: TVoiceUserAudioStreamProps) => {
+    const { screenShareAudioRef, hasScreenShareAudioStream } =
+      useVoiceRefs(userId);
+
+    return (
+      <>
+        {hasScreenShareAudioStream && (
+          <audio
+            ref={screenShareAudioRef}
+            className="hidden"
+            autoPlay
+            playsInline
+            data-user-id={userId}
+          />
+        )}
+      </>
+    );
+  }
+);
+
+const ScreenShareAudioStreams = memo(
+  ({ channelId }: TVoiceAudioStreamsProps) => {
+    const voiceUsers = useVoiceUsersByChannelId(channelId);
+
+    return (
+      <>
+        {voiceUsers.map((voiceUser) => (
+          <VoiceUserScreenShareAudio key={voiceUser.id} userId={voiceUser.id} />
+        ))}
+      </>
+    );
+  }
+);
+
+export { ScreenShareAudioStreams, VoiceAudioStreams };

@@ -42,14 +42,19 @@ const subscribeToServer: ServerSubscriptor = (trpc, store) => {
   };
 };
 
-const initSubscriptions = () => {
-  const connection = getActiveConnection();
+const initSubscriptions = (
+  // The connection to bind subscriptions to. Pass it explicitly (not the active
+  // one) so a join that resolves after the active server changed still binds to
+  // the server it was joining. (review fix)
+  connection?: { trpc: TRPCClient; store: ServerStore }
+) => {
+  const target = connection ?? getActiveConnection();
 
-  if (!connection) {
+  if (!target) {
     throw new Error('Cannot init subscriptions without an active connection');
   }
 
-  const { trpc, store } = connection;
+  const { trpc, store } = target;
 
   const subscriptors: ServerSubscriptor[] = [
     subscribeToChannels,

@@ -55,7 +55,10 @@ import {
   setVoiceControlsBridge
 } from './controls-bridge';
 import { ExternalAudioStreams } from '../channel-view/voice/external-audio-streams';
-import { VoiceAudioStreams } from '../channel-view/voice/voice-audio-streams';
+import {
+  ScreenShareAudioStreams,
+  VoiceAudioStreams
+} from '../channel-view/voice/voice-audio-streams';
 import { FloatingPinnedCard } from './floating-pinned-card';
 import { GlobalVoiceBar } from './global-voice-bar';
 import {
@@ -1283,6 +1286,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
           {currentVoiceChannelId !== undefined && (
             <>
               <VoiceAudioStreams channelId={currentVoiceChannelId} />
+              <ScreenShareAudioStreams channelId={currentVoiceChannelId} />
               <ExternalAudioStreams channelId={currentVoiceChannelId} />
             </>
           )}
