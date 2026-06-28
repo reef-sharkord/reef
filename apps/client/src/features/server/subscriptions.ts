@@ -1,5 +1,6 @@
+import { runWithActiveStore, type ServerStore } from '@/features/store';
 import { logDebug } from '@/helpers/browser-logger';
-import { getTRPCClient } from '@/lib/trpc';
+import { getActiveConnection, type TRPCClient } from '@/lib/connections';
 import { type TPublicServerSettings } from '@sharkord/shared';
 import { setPublicServerSettings } from './actions';
 import { subscribeToCategories } from './categories/subscriptions';
@@ -11,16 +12,26 @@ import { subscribeToRoles } from './roles/subscriptions';
 import { subscribeToUsers } from './users/subscriptions';
 import { subscribeToVoice } from './voice/subscriptions';
 
-const subscribeToServer = () => {
-  const trpc = getTRPCClient();
+/**
+ * Each subscriptor is bound to a specific server's tRPC client + store. Event
+ * handlers run via `runWithActiveStore(store, ...)` so their dispatches land in
+ * the originating server's store even when another server is active in the UI.
+ * See UNCORD_PLAN.md §3.2.
+ */
+export type ServerSubscriptor = (
+  trpc: TRPCClient,
+  store: ServerStore
+) => () => void;
 
+const subscribeToServer: ServerSubscriptor = (trpc, store) => {
   const onSettingsUpdateSub = trpc.others.onServerSettingsUpdate.subscribe(
     undefined,
     {
-      onData: (settings: TPublicServerSettings) => {
-        logDebug('[EVENTS] others.onServerSettingsUpdate', { settings });
-        setPublicServerSettings(settings);
-      },
+      onData: (settings: TPublicServerSettings) =>
+        runWithActiveStore(store, () => {
+          logDebug('[EVENTS] others.onServerSettingsUpdate', { settings });
+          setPublicServerSettings(settings);
+        }),
       onError: (err) =>
         console.error('onSettingsUpdate subscription error:', err)
     }
@@ -32,7 +43,15 @@ const subscribeToServer = () => {
 };
 
 const initSubscriptions = () => {
-  const subscriptors = [
+  const connection = getActiveConnection();
+
+  if (!connection) {
+    throw new Error('Cannot init subscriptions without an active connection');
+  }
+
+  const { trpc, store } = connection;
+
+  const subscriptors: ServerSubscriptor[] = [
     subscribeToChannels,
     subscribeToServer,
     subscribeToEmojis,
@@ -44,7 +63,9 @@ const initSubscriptions = () => {
     subscribeToPlugins
   ];
 
-  const unsubscribes = subscriptors.map((subscriptor) => subscriptor());
+  const unsubscribes = subscriptors.map((subscriptor) =>
+    subscriptor(trpc, store)
+  );
 
   return () => {
     unsubscribes.forEach((unsubscribe) => unsubscribe());

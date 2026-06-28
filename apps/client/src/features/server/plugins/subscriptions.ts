@@ -1,5 +1,6 @@
+import type { ServerSubscriptor } from '@/features/server/subscriptions';
+import { runWithActiveStore } from '@/features/store';
 import { logDebug } from '@/helpers/browser-logger';
-import { getTRPCClient } from '@/lib/trpc';
 import {
   processPluginComponents,
   setPluginCommands,
@@ -7,16 +8,15 @@ import {
   setPluginsMetadata
 } from './actions';
 
-const subscribeToPlugins = () => {
-  const trpc = getTRPCClient();
-
+const subscribeToPlugins: ServerSubscriptor = (trpc, store) => {
   const onCommandsChangeSub = trpc.plugins.onCommandsChange.subscribe(
     undefined,
     {
-      onData: (data) => {
-        logDebug('[EVENTS] plugins.onCommandsChange', { data });
-        setPluginCommands(data);
-      },
+      onData: (data) =>
+        runWithActiveStore(store, () => {
+          logDebug('[EVENTS] plugins.onCommandsChange', { data });
+          setPluginCommands(data);
+        }),
       onError: (err) =>
         console.error('onCommandsChange subscription error:', err)
     }
@@ -28,8 +28,10 @@ const subscribeToPlugins = () => {
       onData: async (data) => {
         const components = await processPluginComponents(data);
 
-        logDebug('[EVENTS] plugins.onComponentsChange', { data, components });
-        setPluginComponents(components);
+        runWithActiveStore(store, () => {
+          logDebug('[EVENTS] plugins.onComponentsChange', { data, components });
+          setPluginComponents(components);
+        });
       },
       onError: (err) =>
         console.error('onComponentsChange subscription error:', err)
@@ -39,10 +41,11 @@ const subscribeToPlugins = () => {
   const onMetadataChangeSub = trpc.plugins.onMetadataChange.subscribe(
     undefined,
     {
-      onData: (data) => {
-        logDebug('[EVENTS] plugins.onMetadataChange', { data });
-        setPluginsMetadata(data);
-      },
+      onData: (data) =>
+        runWithActiveStore(store, () => {
+          logDebug('[EVENTS] plugins.onMetadataChange', { data });
+          setPluginsMetadata(data);
+        }),
       onError: (err) =>
         console.error('onMetadataChange subscription error:', err)
     }

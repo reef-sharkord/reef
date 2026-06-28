@@ -50,6 +50,26 @@ const setActiveStore = (next: ServerStore) => {
   activeStore = next;
 };
 
+/**
+ * Run `fn` with `target` temporarily set as the active store, then restore the
+ * previous one. Server-bound subscriptions use this so their dispatches land in
+ * the originating server's store even when a different server is active (the
+ * "background events must use their own store" rule, UNCORD_PLAN.md §3.2/§3.5).
+ *
+ * `fn` MUST be synchronous — the restore happens as soon as it returns, so any
+ * dispatch scheduled in a later microtask would hit the wrong store.
+ */
+const runWithActiveStore = <T>(target: ServerStore, fn: () => T): T => {
+  const previous = activeStore;
+  activeStore = target;
+
+  try {
+    return fn();
+  } finally {
+    activeStore = previous;
+  }
+};
+
 // Stable identity that forwards every store operation to the active store.
 // Redux store methods are closures (not `this`-dependent), but we bind anyway
 // for safety when handing functions to consumers like react-redux.
@@ -65,6 +85,7 @@ export {
   createServerStore,
   getActiveStore,
   getBootstrapStore,
+  runWithActiveStore,
   setActiveStore,
   store
 };
