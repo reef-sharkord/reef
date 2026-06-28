@@ -5,7 +5,6 @@ import { RightSidebar } from '@/components/right-sidebar';
 import { ThreadSidebar } from '@/components/thread-sidebar';
 import { TopBar } from '@/components/top-bar';
 import { VoiceChatSidebar } from '@/components/voice-chat-sidebar';
-import { VoiceProvider } from '@/components/voice-provider';
 import { useSelectedDmChannelId, useThreadSidebar } from '@/features/app/hooks';
 import { setDmsOpen } from '@/features/server/actions';
 import { setSelectedChannelId } from '@/features/server/channels/actions';
@@ -75,12 +74,11 @@ const ServerView = memo(() => {
   }, [publicSettings?.directMessagesEnabled, dmsOpen]);
 
   return (
-    <VoiceProvider>
-      <div
-        data-testid={TestId.SERVER_VIEW}
-        className="flex h-dvh flex-col bg-background text-foreground dark"
-        {...swipeHandlers}
-      >
+    <div
+      data-testid={TestId.SERVER_VIEW}
+      className="flex h-dvh flex-col bg-background text-foreground dark"
+      {...swipeHandlers}
+    >
         <TopBar
           onToggleRightSidebar={handleDesktopRightSidebarToggle}
           isOpen={isDesktopRightSidebarOpen}
@@ -136,7 +134,6 @@ const ServerView = memo(() => {
           </Protect>
         </div>
       </div>
-    </VoiceProvider>
   );
 });
 

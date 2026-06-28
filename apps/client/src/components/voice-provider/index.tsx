@@ -1,3 +1,4 @@
+import { store } from '@/features/store';
 import { useCurrentVoiceChannelId } from '@/features/server/channels/hooks';
 import { useWebRtcSimulcastEnabled } from '@/features/server/hooks';
 import { playSound } from '@/features/server/sounds/actions';
@@ -23,7 +24,7 @@ import {
 } from '@/helpers/get-display-media-support';
 import { getResWidthHeight } from '@/helpers/get-res-with-height';
 import { useScreenShareSupport } from '@/hooks/use-screen-share-support';
-import { getTRPCClient } from '@/lib/trpc';
+import { getVoiceTRPCClient } from '@/lib/voice-connection';
 import { NoiseSuppression, VideoCodec, type TStreamQuality } from '@/types';
 import {
   DEFAULT_BITRATE,
@@ -47,11 +48,14 @@ import {
   useRef,
   useState
 } from 'react';
+import { Provider } from 'react-redux';
 import { useDevices } from '../devices-provider/hooks/use-devices';
 import {
   clearVoiceControlsBridge,
   setVoiceControlsBridge
 } from './controls-bridge';
+import { ExternalAudioStreams } from '../channel-view/voice/external-audio-streams';
+import { VoiceAudioStreams } from '../channel-view/voice/voice-audio-streams';
 import { FloatingPinnedCard } from './floating-pinned-card';
 import {
   getRemoteConsumerTypeKey,
@@ -321,7 +325,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
 
       if (!shouldShowQualityPicker(remoteId, kind)) return;
 
-      const client = getTRPCClient();
+      const client = getVoiceTRPCClient();
 
       try {
         await client.voice.setConsumerQuality.mutate({
@@ -631,7 +635,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
         localAudioProducer.current?.on('@close', async () => {
           logVoice('Audio producer closed');
 
-          const trpc = getTRPCClient();
+          const trpc = getVoiceTRPCClient();
 
           try {
             await trpc.voice.closeProducer.mutate({
@@ -758,7 +762,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
         localVideoProducer.current?.on('@close', async () => {
           logVoice('Video producer closed');
 
-          const trpc = getTRPCClient();
+          const trpc = getVoiceTRPCClient();
 
           try {
             await trpc.voice.closeProducer.mutate({
@@ -973,7 +977,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
         localScreenShareProducer.current?.on('@close', async () => {
           logVoice('Screen share producer closed');
 
-          const trpc = getTRPCClient();
+          const trpc = getVoiceTRPCClient();
 
           try {
             await trpc.voice.closeProducer.mutate({
@@ -1272,13 +1276,24 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
     <VoiceProviderContext.Provider value={contextValue}>
       <VolumeControlProvider>
         <div className="relative">
+          {/* Persistent remote-audio sink: keeps voice audible while viewing
+              another server, since the per-channel grid unmounts on switch.
+              (UNCORD_PLAN.md §3.4, M2) */}
+          {currentVoiceChannelId !== undefined && (
+            <>
+              <VoiceAudioStreams channelId={currentVoiceChannelId} />
+              <ExternalAudioStreams channelId={currentVoiceChannelId} />
+            </>
+          )}
           <FloatingPinnedCard
             remoteUserStreams={remoteUserStreams}
             externalStreams={externalStreams}
             localScreenShareStream={localScreenShareStream}
             localVideoStream={localVideoStream}
           />
-          {children}
+          {/* Children (the app/Routing) must read the normal active-store proxy,
+              not the voice store this provider is bound to. (M2) */}
+          <Provider store={store}>{children}</Provider>
         </div>
       </VolumeControlProvider>
     </VoiceProviderContext.Provider>

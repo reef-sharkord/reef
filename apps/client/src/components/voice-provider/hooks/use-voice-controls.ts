@@ -3,7 +3,7 @@ import { playSound } from '@/features/server/sounds/actions';
 import { SoundType } from '@/features/server/types';
 import { updateOwnVoiceState } from '@/features/server/voice/actions';
 import { useOwnVoiceState } from '@/features/server/voice/hooks';
-import { getTRPCClient } from '@/lib/trpc';
+import { getVoiceTRPCClient } from '@/lib/voice-connection';
 import { getTrpcError } from '@sharkord/shared';
 import { useCallback, useRef } from 'react';
 import { toast } from 'sonner';
@@ -78,7 +78,7 @@ const useVoiceControls = ({
       return;
     }
 
-    const trpc = getTRPCClient();
+    const trpc = getVoiceTRPCClient();
 
     try {
       await trpc.voice.updateState.mutate({
@@ -109,7 +109,7 @@ const useVoiceControls = ({
     isTogglingSound.current = true;
 
     const nextSoundMuted = !ownVoiceState.soundMuted;
-    const trpc = getTRPCClient();
+    const trpc = getVoiceTRPCClient();
     const previousPendingMicRestoreState = pendingMicRestoreStateRef.current;
     const nextVoiceState: TVoiceStateUpdate = {
       soundMuted: nextSoundMuted
@@ -183,7 +183,7 @@ const useVoiceControls = ({
     isTogglingWebcam.current = true;
 
     const newState = !ownVoiceState.webcamEnabled;
-    const trpc = getTRPCClient();
+    const trpc = getVoiceTRPCClient();
 
     updateOwnVoiceState({ webcamEnabled: newState });
 
@@ -228,7 +228,7 @@ const useVoiceControls = ({
     isTogglingScreenShare.current = true;
 
     const newState = !ownVoiceState.sharingScreen;
-    const trpc = getTRPCClient();
+    const trpc = getVoiceTRPCClient();
 
     updateOwnVoiceState({ sharingScreen: newState });
 

@@ -1,7 +1,7 @@
 import { useCurrentVoiceChannelId } from '@/features/server/channels/hooks';
 import { useOwnUserId } from '@/features/server/users/hooks';
 import { logVoice } from '@/helpers/browser-logger';
-import { getTRPCClient } from '@/lib/trpc';
+import { getVoiceTRPCClient } from '@/lib/voice-connection';
 import type { TRemoteUserStreamKinds } from '@/types';
 import { StreamKind } from '@sharkord/shared';
 import type { RtpCapabilities } from 'mediasoup-client/types';
@@ -43,7 +43,7 @@ const useVoiceEvents = ({
       return;
     }
 
-    const trpc = getTRPCClient();
+    const trpc = getVoiceTRPCClient();
 
     let isCleaningUp = false;
 

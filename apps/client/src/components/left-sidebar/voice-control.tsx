@@ -18,8 +18,6 @@ import {
 } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ExternalAudioStreams } from '../channel-view/voice/external-audio-streams';
-import { VoiceAudioStreams } from '../channel-view/voice/voice-audio-streams';
 import { StatsPopover } from './stats-popover';
 
 const VoiceControl = memo(() => {
@@ -70,8 +68,8 @@ const VoiceControl = memo(() => {
 
   return (
     <>
-      <VoiceAudioStreams channelId={voiceChannelId} />
-      <ExternalAudioStreams channelId={voiceChannelId} />
+      {/* Remote-audio sinks now live in the global VoiceProvider so audio
+          persists across server switches. (UNCORD_PLAN.md §3.4, M2) */}
       <div className="bg-secondary/30 border-t border-border">
         <StatsPopover>
           <div className="flex items-center px-2 py-1.5 gap-2 bg-secondary/50 cursor-pointer hover:bg-secondary/60 transition-colors">

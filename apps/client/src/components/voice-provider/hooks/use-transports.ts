@@ -1,5 +1,5 @@
 import { logVoice } from '@/helpers/browser-logger';
-import { getTRPCClient } from '@/lib/trpc';
+import { getVoiceTRPCClient } from '@/lib/voice-connection';
 import type { TRemoteUserStreamKinds } from '@/types';
 import {
   type ConsumerType,
@@ -74,7 +74,7 @@ const useTransports = ({
   const createProducerTransport = useCallback(async (device: Device) => {
     logVoice('Creating producer transport', { device });
 
-    const trpc = getTRPCClient();
+    const trpc = getVoiceTRPCClient();
 
     try {
       const params = await trpc.voice.createProducerTransport.mutate();
@@ -165,7 +165,7 @@ const useTransports = ({
   const createConsumerTransport = useCallback(async (device: Device) => {
     logVoice('Creating consumer transport', { device });
 
-    const trpc = getTRPCClient();
+    const trpc = getVoiceTRPCClient();
 
     try {
       const params = await trpc.voice.createConsumerTransport.mutate();
@@ -247,7 +247,7 @@ const useTransports = ({
       try {
         logVoice('Consuming remote producer', { remoteId, kind });
 
-        const trpc = getTRPCClient();
+        const trpc = getVoiceTRPCClient();
 
         const {
           producerId,
@@ -397,7 +397,7 @@ const useTransports = ({
     ) => {
       logVoice('Consuming existing producers', { rtpCapabilities });
 
-      const trpc = getTRPCClient();
+      const trpc = getVoiceTRPCClient();
 
       try {
         const {

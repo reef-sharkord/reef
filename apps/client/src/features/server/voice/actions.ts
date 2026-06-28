@@ -6,7 +6,14 @@ import {
   setLocalStorageItem,
   setLocalStorageItemBool
 } from '@/helpers/storage';
-import { getTRPCClient } from '@/lib/trpc';
+import { getActiveConnection } from '@/lib/connections';
+import {
+  clearVoiceConnection,
+  getVoiceConnection,
+  getVoiceStore,
+  getVoiceTRPCClient,
+  pinVoiceConnection
+} from '@/lib/voice-connection';
 import {
   getTrpcError,
   type TExternalStream,
@@ -14,10 +21,6 @@ import {
 } from '@sharkord/shared';
 import type { RtpCapabilities } from 'mediasoup-client/types';
 import { toast } from 'sonner';
-import {
-  setCurrentVoiceChannelId,
-  setSelectedChannelId
-} from '../channels/actions';
 import {
   currentVoiceChannelIdSelector,
   selectedChannelIdSelector
@@ -137,38 +140,64 @@ export const updateVoiceUserState = (
 export const updateOwnVoiceState = (
   newState: Partial<TVoiceUserState>
 ): void => {
-  store.dispatch(serverSliceActions.updateOwnVoiceState(newState));
+  // own voice state belongs to the voice-hosting server, so dispatch into its
+  // store (falls back to the active store when not in a call). (M2)
+  getVoiceStore().dispatch(serverSliceActions.updateOwnVoiceState(newState));
 };
 
 export const joinVoice = async (
   channelId: number
 ): Promise<RtpCapabilities | undefined> => {
-  const state = store.getState();
-  const currentChannelId = currentVoiceChannelIdSelector(state);
+  // The voice channel always lives on the server currently in view (the active
+  // connection); that server becomes the voice-hosting server.
+  const active = getActiveConnection();
 
-  if (channelId === currentChannelId) {
-    // already in the desired channel
+  if (!active) {
     return undefined;
   }
 
-  if (currentChannelId) {
-    // is already in a voice channel, leave it first
+  const existingVoice = getVoiceConnection();
+
+  if (existingVoice) {
+    const currentChannelId = currentVoiceChannelIdSelector(
+      existingVoice.store.getState()
+    );
+
+    if (existingVoice.host === active.host && currentChannelId === channelId) {
+      // already in this exact channel
+      return undefined;
+    }
+
+    // global single-voice rule: leave whatever channel we're in first, even if
+    // it is on a different server. (UNCORD_PLAN.md §3.4)
     await leaveVoice({ reason: 'switch_channel' });
   }
 
-  setCurrentVoiceChannelId(channelId);
+  // pin the voice session to this server so it keeps targeting it even after
+  // the user switches the server they are viewing.
+  pinVoiceConnection({
+    host: active.host,
+    trpc: active.trpc,
+    store: active.store
+  });
 
-  const { micMuted, soundMuted } = ownVoiceStateSelector(state);
-  const client = getTRPCClient();
+  active.store.dispatch(serverSliceActions.setCurrentVoiceChannelId(channelId));
+
+  const { micMuted, soundMuted } = ownVoiceStateSelector(active.store.getState());
 
   try {
-    const { routerRtpCapabilities } = await client.voice.join.mutate({
+    const { routerRtpCapabilities } = await active.trpc.voice.join.mutate({
       channelId,
       state: { micMuted, soundMuted }
     });
 
     return routerRtpCapabilities;
   } catch (error) {
+    // roll back the optimistic pin + channel selection
+    active.store.dispatch(
+      serverSliceActions.setCurrentVoiceChannelId(undefined)
+    );
+    clearVoiceConnection();
     toast.error(getTrpcError(error, 'Failed to join voice channel'));
   }
 
@@ -183,13 +212,16 @@ export type TLeaveVoiceReason =
 export const leaveVoice = async (options?: {
   reason?: TLeaveVoiceReason;
 }): Promise<void> => {
-  const state = store.getState();
+  // Operate on the voice-hosting server (which may not be the one in view).
+  const voiceStore = getVoiceStore();
+  const state = voiceStore.getState();
   const currentChannelId = currentVoiceChannelIdSelector(state);
   const selectedChannelId = selectedChannelIdSelector(state);
   const reason = options?.reason ?? 'unknown';
 
   if (!currentChannelId) {
     logVoice('Leave voice requested without active channel', { reason });
+    clearVoiceConnection();
     return;
   }
 
@@ -200,20 +232,27 @@ export const leaveVoice = async (options?: {
   });
 
   if (selectedChannelId === currentChannelId) {
-    setSelectedChannelId(undefined);
+    voiceStore.dispatch(serverSliceActions.setSelectedChannelId(undefined));
   }
 
-  setCurrentVoiceChannelId(undefined);
-  updateOwnVoiceState({ webcamEnabled: false, sharingScreen: false });
-  setPinnedCard(undefined);
+  voiceStore.dispatch(serverSliceActions.setCurrentVoiceChannelId(undefined));
+  voiceStore.dispatch(
+    serverSliceActions.updateOwnVoiceState({
+      webcamEnabled: false,
+      sharingScreen: false
+    })
+  );
+  voiceStore.dispatch(serverSliceActions.setPinnedCard(undefined));
 
-  const client = getTRPCClient();
+  const client = getVoiceTRPCClient();
 
   try {
     await client.voice.leave.mutate();
     playSound(SoundType.OWN_USER_LEFT_VOICE_CHANNEL);
   } catch (error) {
     toast.error(getTrpcError(error, 'Failed to leave voice channel'));
+  } finally {
+    clearVoiceConnection();
   }
 };
 
