@@ -1,3 +1,4 @@
+import { Rail } from '@/components/rail';
 import {
   useIsAppLoading,
   useIsAutoConnecting,
@@ -8,6 +9,8 @@ import {
   useIsConnected,
   useServerName
 } from '@/features/server/hooks';
+import { useRailServers } from '@/hooks/use-connections';
+import { getConnection } from '@/lib/connections';
 import { Connect } from '@/screens/connect';
 import { Disconnected } from '@/screens/disconnected';
 import { LoadingApp } from '@/screens/loading-app';
@@ -15,24 +18,31 @@ import { ServerView } from '@/screens/server-view';
 import { DisconnectCode } from '@sharkord/shared';
 import { memo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Provider } from 'react-redux';
 
-const Routing = memo(() => {
+const isHardDisconnect = (
+  disconnectInfo: ReturnType<typeof useDisconnectInfo>
+) =>
+  !!disconnectInfo &&
+  (!disconnectInfo.wasClean ||
+    disconnectInfo.code === DisconnectCode.KICKED ||
+    disconnectInfo.code === DisconnectCode.BANNED);
+
+/**
+ * The screen for the currently-active server. Rendered under that server's own
+ * Redux store Provider, so all hooks/components read the active server's state.
+ */
+const ActiveServerScreen = memo(() => {
   const { t } = useTranslation('connect');
   const isConnected = useIsConnected();
   const isAppLoading = useIsAppLoading();
   const isPluginsLoading = useIsPluginsLoading();
   const disconnectInfo = useDisconnectInfo();
   const serverName = useServerName();
-  const isAutoConnecting = useIsAutoConnecting();
 
   useEffect(() => {
-    if (isConnected && serverName) {
-      document.title = `${serverName} - Sharkord`;
-      return;
-    }
-
-    document.title = 'Sharkord';
-  }, [isConnected, serverName]);
+    document.title = serverName ? `${serverName} - Uncord` : 'Uncord';
+  }, [serverName]);
 
   if (isAppLoading || isPluginsLoading) {
     return (
@@ -41,23 +51,66 @@ const Routing = memo(() => {
   }
 
   if (!isConnected) {
-    if (isAutoConnecting) {
-      return <LoadingApp text={t('loggingInAutomatically')} />;
-    }
-
-    if (
-      disconnectInfo &&
-      (!disconnectInfo.wasClean ||
-        disconnectInfo.code === DisconnectCode.KICKED ||
-        disconnectInfo.code === DisconnectCode.BANNED)
-    ) {
-      return <Disconnected info={disconnectInfo} />;
+    if (isHardDisconnect(disconnectInfo)) {
+      return <Disconnected info={disconnectInfo!} />;
     }
 
     return <Connect />;
   }
 
   return <ServerView />;
+});
+
+const Routing = memo(() => {
+  const { t } = useTranslation('connect');
+
+  const railServers = useRailServers();
+  const activeHost =
+    railServers.find((server) => server.isActive)?.host ?? null;
+  const activeConnection = activeHost ? getConnection(activeHost) : undefined;
+
+  // Proxy-based gates for the pre-connection flow (boot + first server).
+  const isAppLoading = useIsAppLoading();
+  const isPluginsLoading = useIsPluginsLoading();
+  const isAutoConnecting = useIsAutoConnecting();
+  const disconnectInfo = useDisconnectInfo();
+
+  useEffect(() => {
+    if (!activeConnection) {
+      document.title = 'Uncord';
+    }
+  }, [activeConnection]);
+
+  if (!activeConnection) {
+    if (isAppLoading || isPluginsLoading) {
+      return (
+        <LoadingApp
+          text={isAppLoading ? t('loadingApp') : t('loadingPlugins')}
+        />
+      );
+    }
+
+    if (isAutoConnecting) {
+      return <LoadingApp text={t('loggingInAutomatically')} />;
+    }
+
+    if (isHardDisconnect(disconnectInfo)) {
+      return <Disconnected info={disconnectInfo!} />;
+    }
+
+    return <Connect />;
+  }
+
+  return (
+    <div className="flex h-full w-full">
+      <Rail />
+      <div className="min-w-0 flex-1">
+        <Provider store={activeConnection.store} key={activeHost ?? ''}>
+          <ActiveServerScreen />
+        </Provider>
+      </div>
+    </div>
+  );
 });
 
 export { Routing };

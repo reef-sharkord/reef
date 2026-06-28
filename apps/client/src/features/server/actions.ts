@@ -1,6 +1,11 @@
 import { Dialog } from '@/components/dialogs/dialogs';
 import { logDebug } from '@/helpers/browser-logger';
-import { getHostFromServer } from '@/helpers/get-file-url';
+import {
+  getFileUrl,
+  getHostFromServer,
+  getUrlForHost
+} from '@/helpers/get-file-url';
+import { openConnection, setConnectionMeta } from '@/lib/connections';
 import { cleanup, connectToTRPC, getTRPCClient } from '@/lib/trpc';
 import type { TMessageJumpToTarget } from '@/types';
 import { type TPublicServerSettings, type TServerInfo } from '@sharkord/shared';
@@ -74,6 +79,12 @@ export const connect = async () => {
   const host = getHostFromServer();
   const trpc = await connectToTRPC(host);
 
+  // record rail metadata for the primary server (name + icon from its info).
+  setConnectionMeta(host, {
+    name: info.name,
+    iconUrl: info.logo ? getFileUrl(info.logo) : null
+  });
+
   const { hasPassword, handshakeHash } = await trpc.others.handshake.query();
 
   if (hasPassword) {
@@ -112,6 +123,96 @@ export const joinServer = async (handshakeHash: string, password?: string) => {
   return {
     showWelcomeDialog: data.showWelcomeDialog
   };
+};
+
+export type TAddServerParams = {
+  host: string;
+  identity: string;
+  password: string;
+  autoLogin?: boolean;
+  invite?: string;
+};
+
+export type TAddServerResult =
+  | { ok: true }
+  | { ok: false; errors: Record<string, string> };
+
+/**
+ * Add (connect to) an arbitrary server host for the multi-server rail: fetch its
+ * /info, log in for a per-host token, open a connection (which becomes active
+ * and gives it its own store), then run the normal handshake + join flow. The
+ * join dispatches land in the new server's store because openConnection made it
+ * active. (UNCORD_PLAN.md §3.1/§3.2, M1 step 4)
+ */
+export const addServer = async (
+  params: TAddServerParams
+): Promise<TAddServerResult> => {
+  const { host, identity, password, autoLogin, invite } = params;
+  const url = getUrlForHost(host);
+
+  const infoResponse = await fetch(`${url}/info`);
+
+  if (!infoResponse.ok) {
+    throw new Error('Failed to fetch server info');
+  }
+
+  const info = (await infoResponse.json()) as TServerInfo;
+
+  const loginResponse = await fetch(`${url}/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      identity,
+      password,
+      invite,
+      autoLogin: autoLogin || undefined
+    })
+  });
+
+  if (!loginResponse.ok) {
+    const data = await loginResponse.json();
+
+    return { ok: false, errors: data.errors ?? {} };
+  }
+
+  const { token } = (await loginResponse.json()) as { token: string };
+
+  // open the connection (becomes active + seeds its token), then record its
+  // display metadata and info into its now-active store.
+  openConnection(host, { token });
+
+  // a freshly-created server store starts with appLoading/loadingPlugins=true
+  // (the boot loadApp flow only runs for the primary). Clear them so routing
+  // shows this server instead of a stuck loading screen.
+  store.dispatch(appSliceActions.setAppLoading(false));
+  store.dispatch(appSliceActions.setLoadingPlugins(false));
+
+  setConnectionMeta(host, {
+    name: info.name,
+    iconUrl: info.logo ? `${url}/public/${info.logo.name}` : null
+  });
+
+  setInfo(info);
+
+  const trpc = getTRPCClient();
+  const { hasPassword, handshakeHash } = await trpc.others.handshake.query();
+
+  if (hasPassword) {
+    openDialog(Dialog.SERVER_PASSWORD, {
+      handshakeHash,
+      serverId: info.serverId
+    });
+
+    return { ok: true };
+  }
+
+  const { showWelcomeDialog } = await joinServer(handshakeHash);
+
+  if (showWelcomeDialog) {
+    openDialog(Dialog.WELCOME_PROFILE_SETUP);
+  }
+
+  return { ok: true };
 };
 
 export const disconnectFromServer = () => {
