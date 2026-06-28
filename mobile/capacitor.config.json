@@ -1,0 +1,12 @@
+{
+  "appId": "com.uncord.app",
+  "appName": "Uncord",
+  "webDir": "www",
+  "backgroundColor": "#171717",
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
