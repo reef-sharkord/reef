@@ -29,8 +29,17 @@ const getUrlFromServer = () => {
  * http reaches http hosts and a deployed https client reaches https hosts.
  */
 const getUrlForHost = (host: string) => {
-  if (/^https?:\/\//.test(host)) {
-    return host.replace(/\/+$/, '');
+  // Honor an explicit scheme (case-insensitive; ws/wss map to http/https) so a
+  // host typed with a scheme — incl. soft-keyboard auto-capitalized "Https://"
+  // — isn't mangled. Mirrors buildWsUrl in connections.ts.
+  const schemed = host.match(/^(https?|wss?):\/\//i);
+
+  if (schemed) {
+    const rest = host.slice(schemed[0].length).replace(/\/+$/, '');
+    const s = schemed[1].toLowerCase();
+    const httpScheme = s === 'wss' || s === 'https' ? 'https' : 'http';
+
+    return `${httpScheme}://${rest}`;
   }
 
   // In native shells the page protocol is file:// / capacitor://, so it can't

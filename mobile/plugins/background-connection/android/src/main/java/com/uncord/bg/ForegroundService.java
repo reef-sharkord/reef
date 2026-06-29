@@ -22,6 +22,9 @@ public class ForegroundService extends Service {
 
     private static final String CHANNEL_ID = "uncord_connection";
     private static final int NOTIFICATION_ID = 4711;
+    // Backstop so a wake lock can never leak indefinitely (e.g. if the service is
+    // killed in a way that skips onDestroy). Re-armed on every onStartCommand.
+    private static final long WAKELOCK_TIMEOUT_MS = 10L * 60L * 60L * 1000L;
     // True while the service is running. MainActivity reads this to keep the
     // WebView's JS awake in the background only while connected. (best-effort
     // keep-alive — the proper killed-app fix is push/FCM.)
@@ -57,10 +60,25 @@ public class ForegroundService extends Service {
             wakeLock.setReferenceCounted(false);
         }
         if (!wakeLock.isHeld()) {
-            wakeLock.acquire();
+            wakeLock.acquire(WAKELOCK_TIMEOUT_MS);
         }
 
         return START_STICKY;
+    }
+
+    /**
+     * The user swiped the app out of recents. The WebView (and all keep-alive
+     * work) is gone, so holding the CPU wake lock would just drain the battery
+     * for nothing — shut the service down cleanly. (Killed-app delivery needs
+     * push/FCM, not this service.)
+     */
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        if (wakeLock != null && wakeLock.isHeld()) {
+            wakeLock.release();
+        }
+        stopSelf();
+        super.onTaskRemoved(rootIntent);
     }
 
     @Override

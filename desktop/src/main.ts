@@ -264,9 +264,13 @@ if (!gotSingleInstanceLock) {
     // Launch-at-login / start-in-tray settings.
     ipcMain.handle('startup:get', () => {
       const settings = app.getLoginItemSettings();
-      const openInTray = (settings.launchItems ?? []).some((item) =>
-        item.args?.includes('--hidden')
-      );
+      // "Start in tray" is encoded per-platform: openAsHidden on macOS, a
+      // --hidden launch arg on Windows.
+      const openInTray =
+        settings.openAsHidden ||
+        (settings.launchItems ?? []).some((item) =>
+          item.args?.includes('--hidden')
+        );
 
       return { openAtLogin: settings.openAtLogin, openInTray };
     });
@@ -275,7 +279,8 @@ if (!gotSingleInstanceLock) {
       (_event, openAtLogin: boolean, openInTray: boolean) => {
         app.setLoginItemSettings({
           openAtLogin,
-          args: openInTray ? ['--hidden'] : []
+          openAsHidden: openInTray, // macOS
+          args: openInTray ? ['--hidden'] : [] // Windows
         });
       }
     );

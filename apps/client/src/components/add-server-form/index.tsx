@@ -53,7 +53,19 @@ const AddServerForm = memo(({ onClose }: { onClose: () => void }) => {
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
+      onClick={() => {
+        // Don't dismiss mid-connection (matches the disabled Cancel button); a
+        // backdrop click would drop the in-flight error silently.
+        if (!loading) {
+          onClose();
+        }
+      }}
+      // The modal is portaled to <body>, but React events still bubble along the
+      // component tree into ServerView's swipe handlers. Stop touch gestures here
+      // so a swipe inside the modal doesn't toggle the rail/menu behind it.
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
     >
       <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
         <CardHeader>
@@ -65,6 +77,10 @@ const AddServerForm = memo(({ onClose }: { onClose: () => void }) => {
               value={host}
               onChange={(e) => setHost(e.target.value)}
               placeholder="chat.example.com"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              inputMode="url"
               autoFocus
             />
           </Group>

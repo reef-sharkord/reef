@@ -12,13 +12,15 @@ import {
 import { isStandalone } from '@/helpers/standalone';
 import { useRailServers } from '@/hooks/use-connections';
 import { getConnection } from '@/lib/connections';
+import { cn } from '@/lib/utils';
 import { Connect } from '@/screens/connect';
 import { Disconnected } from '@/screens/disconnected';
 import { LoadingApp } from '@/screens/loading-app';
 import { ServerView } from '@/screens/server-view';
 import { Welcome } from '@/components/welcome';
 import { DisconnectCode } from '@sharkord/shared';
-import { memo, useEffect } from 'react';
+import { PanelLeftOpen } from 'lucide-react';
+import { memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Provider } from 'react-redux';
 
@@ -76,6 +78,20 @@ const Routing = memo(() => {
   const isPluginsLoading = useIsPluginsLoading();
   const isAutoConnecting = useIsAutoConnecting();
   const disconnectInfo = useDisconnectInfo();
+  const isActiveConnected = useIsConnected();
+
+  // Mobile rail for the disconnected states (Connect/Disconnected/Loading),
+  // where ServerView — and its swipe-to-open rail — isn't mounted. Without this
+  // a mobile user whose active server drops (kick/ban/reconnect) would be
+  // stranded with no way to switch to another connected server. When connected,
+  // ServerView's own two-stage swipe provides the rail.
+  const [mobileRailOpen, setMobileRailOpen] = useState(false);
+
+  useEffect(() => {
+    if (isActiveConnected) {
+      setMobileRailOpen(false);
+    }
+  }, [isActiveConnected]);
 
   useEffect(() => {
     if (!activeConnection) {
@@ -114,6 +130,37 @@ const Routing = memo(() => {
       {/* Desktop: rail is always visible. Mobile: it's hidden here and revealed
           as the second stage of the swipe-right gesture inside ServerView. */}
       <Rail className="hidden md:flex" />
+
+      {/* Mobile, disconnected-state only: an opener button + the rail drawer, so
+          the user can always switch servers even when ServerView isn't mounted. */}
+      {!isActiveConnected && (
+        <>
+          <button
+            type="button"
+            onClick={() => setMobileRailOpen(true)}
+            aria-label="Show servers"
+            className="md:hidden fixed top-3 left-3 z-[55] flex items-center gap-1 rounded-md bg-card/90 px-2 py-1.5 text-sm text-foreground shadow-md backdrop-blur"
+          >
+            <PanelLeftOpen className="h-4 w-4" />
+            Servers
+          </button>
+
+          {mobileRailOpen && (
+            <div
+              className="md:hidden fixed inset-0 bg-black/50 z-[45]"
+              onClick={() => setMobileRailOpen(false)}
+            />
+          )}
+
+          <Rail
+            className={cn(
+              'md:hidden fixed top-0 bottom-0 left-0 z-50 transition-transform duration-300 ease-in-out',
+              mobileRailOpen ? 'translate-x-0' : '-translate-x-full'
+            )}
+          />
+        </>
+      )}
+
       <div className="min-w-0 flex-1">
         <Provider store={activeConnection.store} key={activeHost ?? ''}>
           <ActiveServerScreen />
