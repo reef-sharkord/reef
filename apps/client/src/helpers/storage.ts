@@ -41,7 +41,11 @@ export enum LocalStorageKey {
   // notification settings are independent. (UNCORD_PLAN.md §3.5, M4)
   NOTIFICATION_PREFS = 'uncord-notification-prefs',
   // Per-server mute (suppress notification popups + ping sounds). (M4)
-  MUTED_SERVERS = 'uncord-muted-servers'
+  MUTED_SERVERS = 'uncord-muted-servers',
+  // Rail tile order (array of hosts) and per-server local overrides
+  // (custom name/color). Client-only personalization. (M8)
+  RAIL_ORDER = 'reef-rail-order',
+  RAIL_CUSTOM = 'reef-rail-custom'
 }
 
 export enum SessionStorageKey {

@@ -1,0 +1,144 @@
+import {
+  channelReadStateByIdSelector,
+  channelsSelector,
+  directMessagesUnreadCountSelector
+} from '@/features/server/channels/selectors';
+import { hasUnreadMentionsSelector } from '@/features/server/selectors';
+import {
+  getConnection,
+  getRailServers,
+  subscribe as subscribeConnections
+} from '@/lib/connections';
+
+/**
+ * Cross-server inbox aggregation. Reads each connection's store directly (no
+ * dispatch) to collect unread channels + DMs across every connected server, so a
+ * single view can surface everything that needs attention. Recomputed on every
+ * connection-registry change (the same signal that drives the rail badges), with
+ * a cached snapshot so useSyncExternalStore stays stable. (M8)
+ */
+
+export type InboxEntry = {
+  kind: 'channel' | 'dm';
+  channelId?: number;
+  name: string;
+  unread: number;
+  hasMention: boolean;
+};
+
+export type InboxServer = {
+  host: string;
+  name: string;
+  iconUrl: string | null;
+  entries: InboxEntry[];
+};
+
+const build = (): InboxServer[] => {
+  const result: InboxServer[] = [];
+
+  for (const server of getRailServers()) {
+    const conn = getConnection(server.host);
+
+    if (!conn) {
+      continue;
+    }
+
+    const state = conn.store.getState();
+    const entries: InboxEntry[] = [];
+
+    for (const channel of channelsSelector(state)) {
+      if (channel.isDm) {
+        continue;
+      }
+
+      const unread = channelReadStateByIdSelector(state, channel.id);
+
+      if (unread > 0) {
+        entries.push({
+          kind: 'channel',
+          channelId: channel.id,
+          name: channel.name,
+          unread,
+          hasMention: hasUnreadMentionsSelector(state, channel.id)
+        });
+      }
+    }
+
+    const dmUnread = directMessagesUnreadCountSelector(state);
+
+    if (dmUnread > 0) {
+      entries.push({
+        kind: 'dm',
+        name: 'Direct messages',
+        unread: dmUnread,
+        hasMention: false
+      });
+    }
+
+    if (entries.length > 0) {
+      entries.sort(
+        (a, b) =>
+          Number(b.hasMention) - Number(a.hasMention) || b.unread - a.unread
+      );
+      result.push({
+        host: server.host,
+        name: server.name,
+        iconUrl: server.iconUrl,
+        entries
+      });
+    }
+  }
+
+  return result;
+};
+
+const keyOf = (servers: InboxServer[]): string =>
+  servers
+    .map(
+      (s) =>
+        `${s.host}:` +
+        s.entries
+          .map(
+            (e) =>
+              `${e.kind}${e.channelId ?? ''}=${e.unread}${e.hasMention ? '!' : ''}`
+          )
+          .join(',')
+    )
+    .join('|');
+
+let snapshot: InboxServer[] = build();
+let lastKey = keyOf(snapshot);
+
+const recompute = () => {
+  const next = build();
+  const key = keyOf(next);
+
+  if (key !== lastKey) {
+    lastKey = key;
+    snapshot = next;
+  }
+};
+
+const getInboxSnapshot = (): InboxServer[] => snapshot;
+
+const subscribeInbox = (listener: () => void): (() => void) =>
+  subscribeConnections(() => {
+    recompute();
+    listener();
+  });
+
+const getInboxTotals = (): { unread: number; hasMention: boolean } => {
+  let unread = 0;
+  let hasMention = false;
+
+  for (const server of snapshot) {
+    for (const entry of server.entries) {
+      unread += entry.unread;
+      hasMention = hasMention || entry.hasMention;
+    }
+  }
+
+  return { unread, hasMention };
+};
+
+export { getInboxSnapshot, getInboxTotals, subscribeInbox };
