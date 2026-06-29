@@ -4,3 +4,5 @@ node_modules/
 /www/
 /android/
 /ios/
+# Firebase app config (per-project; drop yours here to enable FCM). Keep private.
+/google-services.json
