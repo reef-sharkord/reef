@@ -1,32 +1,34 @@
-// REEF Push — client entry.
+// REEF Push — client entry (UnifiedPush / ntfy).
 //
-// Renders an invisible component into the home screen that, on the native REEF
-// app only, asks the native Firebase Messaging plugin for this device's FCM
-// token and uploads it to the server via the plugin action `saveFcmToken`.
-// On the browser / desktop (no Capacitor FirebaseMessaging) it does nothing.
+// Invisible home-screen component that, on the native REEF app, registers this
+// device with its UnifiedPush distributor (e.g. the ntfy app) and uploads the
+// resulting endpoint URL to the server via the `savePushEndpoint` action. The
+// server then POSTs notifications to that endpoint.
+//
+// Talks to a custom native bridge `window.Capacitor.Plugins.UnifiedPush`
+// (added to the REEF APK in the native stage). Inert on desktop/browser, or if
+// no distributor is installed.
 
 const React = window.__SHARKORD_REACT__;
 
-const getMessaging = () => {
+const getUnifiedPush = () => {
   const cap = window.Capacitor;
 
   if (!cap || typeof cap.isNativePlatform !== 'function' || !cap.isNativePlatform()) {
     return null;
   }
 
-  return cap.Plugins && cap.Plugins.FirebaseMessaging
-    ? cap.Plugins.FirebaseMessaging
-    : null;
+  return cap.Plugins && cap.Plugins.UnifiedPush ? cap.Plugins.UnifiedPush : null;
 };
 
-const uploadToken = (token) => {
-  if (!token) {
+const uploadEndpoint = (endpoint) => {
+  if (!endpoint) {
     return;
   }
 
   try {
-    window.__SHARKORD_STORE__.actions.executePluginAction('saveFcmToken', {
-      token
+    window.__SHARKORD_STORE__.actions.executePluginAction('savePushEndpoint', {
+      endpoint
     });
   } catch {
     // server may not have the plugin enabled; ignore
@@ -35,45 +37,51 @@ const uploadToken = (token) => {
 
 function PushRegistrar() {
   React.useEffect(() => {
-    const messaging = getMessaging();
+    const up = getUnifiedPush();
 
-    if (!messaging) {
+    if (!up) {
       return;
     }
 
     let cancelled = false;
-    let listenerHandle;
+    let listener;
 
-    const register = async () => {
+    const start = async () => {
       try {
-        await messaging.requestPermissions();
-        const result = await messaging.getToken();
+        // If we already have an endpoint, upload it immediately.
+        if (typeof up.getEndpoint === 'function') {
+          const current = await up.getEndpoint();
+          if (!cancelled && current && current.endpoint) {
+            uploadEndpoint(current.endpoint);
+          }
+        }
 
-        if (!cancelled && result && result.token) {
-          uploadToken(result.token);
+        // (Re)register with the distributor; the endpoint arrives via the
+        // listener below (it's delivered asynchronously by the distributor).
+        if (typeof up.register === 'function') {
+          await up.register();
         }
       } catch {
-        // permission denied or Firebase not configured in this build
+        // no distributor installed / user declined — stay inert
       }
     };
 
-    register();
-
-    if (typeof messaging.addListener === 'function') {
-      messaging
-        .addListener('tokenReceived', (event) => {
-          uploadToken(event && event.token);
-        })
+    if (typeof up.addListener === 'function') {
+      up.addListener('endpointChange', (event) => {
+        uploadEndpoint(event && event.endpoint);
+      })
         .then((handle) => {
-          listenerHandle = handle;
+          listener = handle;
         })
         .catch(() => {});
     }
 
+    start();
+
     return () => {
       cancelled = true;
-      if (listenerHandle && typeof listenerHandle.remove === 'function') {
-        listenerHandle.remove();
+      if (listener && typeof listener.remove === 'function') {
+        listener.remove();
       }
     };
   }, []);

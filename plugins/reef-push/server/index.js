@@ -1,117 +1,59 @@
-// REEF Push — server entry.
+// REEF Push — server entry (UnifiedPush / ntfy transport).
 //
-// Listens for new messages and sends a Firebase Cloud Messaging (FCM v1) push to
-// the recipients' registered devices, so the REEF mobile app is notified even
-// when it's backgrounded or killed. Targets only DMs and @mentions (the
-// high-signal cases) to avoid notifying everyone for every message.
+// Listens for new messages and delivers a push to the recipients' registered
+// UnifiedPush endpoints (served by ntfy — public ntfy.sh or a self-hosted
+// instance), so the REEF mobile app is notified even when backgrounded or
+// killed. Targets only DMs and @mentions to avoid notifying everyone.
 //
-// Fully self-contained: it reads DM participants directly from the server's
-// SQLite DB (read-only) so it needs NO changes to the Sharkord server core. If a
-// future Sharkord renames that table, DM lookup degrades to @mentions-only
-// instead of breaking.
+// Fully self-contained: no Sharkord server changes. DM participants are read
+// directly from the server's SQLite DB (read-only); if that schema ever changes
+// it falls back to @mentions-only.
+//
+// The client uploads a UnifiedPush *endpoint URL* (from its distributor, e.g.
+// the ntfy app). We POST the notification payload to that URL. To avoid being an
+// open relay (SSRF), we only POST to https endpoints whose host is allow-listed
+// in the `allowedEndpointHosts` setting (defaults to ntfy.sh; add your
+// self-hosted ntfy host).
 
-import { createSign } from 'node:crypto';
 import { join } from 'node:path';
 import { Database } from 'bun:sqlite';
 
-const FCM_SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
-const OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
-const MAX_DEVICES_PER_USER = 5;
+const MAX_ENDPOINTS_PER_USER = 5;
 const MAX_BODY_LEN = 180;
 
-const base64url = (input) =>
-  Buffer.from(input)
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+const parseAllowedHosts = (raw) =>
+  String(raw || '')
+    .split(',')
+    .map((h) => h.trim().toLowerCase())
+    .filter(Boolean);
 
-// --- FCM v1 auth (service-account JWT -> OAuth2 access token, cached) ----------
-let cachedToken = null; // { accessToken, exp }
-
-const getAccessToken = async (sa) => {
-  const now = Math.floor(Date.now() / 1000);
-
-  if (cachedToken && cachedToken.exp - 60 > now) {
-    return cachedToken.accessToken;
-  }
-
-  const header = base64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-  const claims = base64url(
-    JSON.stringify({
-      iss: sa.client_email,
-      scope: FCM_SCOPE,
-      aud: OAUTH_TOKEN_URL,
-      iat: now,
-      exp: now + 3600
-    })
-  );
-  const signingInput = `${header}.${claims}`;
-  const signature = createSign('RSA-SHA256')
-    .update(signingInput)
-    .sign(sa.private_key);
-  const jwt = `${signingInput}.${base64url(signature)}`;
-
-  const res = await fetch(OAUTH_TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: jwt
-    })
-  });
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    throw new Error(`oauth token failed: ${res.status} ${JSON.stringify(data)}`);
-  }
-
-  cachedToken = {
-    accessToken: data.access_token,
-    exp: now + (data.expires_in || 3600)
-  };
-
-  return cachedToken.accessToken;
-};
-
-const sendFcm = async (projectId, accessToken, token, title, body, data) => {
-  const res = await fetch(
-    `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: {
-          token,
-          notification: { title, body },
-          android: { priority: 'high' },
-          data: data || {}
-        }
-      })
-    }
-  );
-
-  let out = {};
+const isEndpointAllowed = (endpoint, allowedHosts) => {
   try {
-    out = await res.json();
+    const url = new URL(endpoint);
+
+    if (url.protocol !== 'https:') {
+      return false;
+    }
+
+    return allowedHosts.includes(url.hostname.toLowerCase());
   } catch {
-    out = {};
+    return false;
   }
-
-  return { ok: res.ok, status: res.status, out };
 };
 
-// FCM reports these for tokens that no longer exist — prune them.
-const isDeadToken = (status, out) => {
-  if (status === 404) return true;
-  const code = out && out.error && out.error.status;
-  return code === 'NOT_FOUND' || code === 'UNREGISTERED';
+const sendPush = async (endpoint, payload) => {
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  return { ok: res.ok, status: res.status };
 };
 
-// --- recipient resolution -----------------------------------------------------
+// UnifiedPush: 404/410 from the push service means the endpoint is gone.
+const isDeadEndpoint = (status) => status === 404 || status === 410;
+
 // Read DM participants straight from the server's SQLite DB (read-only). Best
 // effort: any failure (path/schema change, lock) falls back to mentions-only.
 const getDmParticipantIds = (dbPath, channelId) => {
@@ -150,23 +92,16 @@ const parseMentionedUserIds = (content) => {
 export async function onLoad(ctx) {
   const settings = await ctx.settings.register([
     {
-      key: 'projectId',
-      name: 'Firebase project ID',
-      description: 'The "project_id" from your Firebase service-account JSON.',
-      type: 'string',
-      defaultValue: ''
-    },
-    {
-      key: 'serviceAccountJson',
-      name: 'Service account JSON',
+      key: 'allowedEndpointHosts',
+      name: 'Allowed push hosts',
       description:
-        'Paste the entire Firebase service-account key JSON (secret). Firebase console -> Project settings -> Service accounts -> Generate new private key.',
+        'Comma-separated hostnames the server may send pushes to. Defaults to ntfy.sh; add your self-hosted ntfy host (e.g. "ntfy.sh,push.example.com").',
       type: 'string',
-      defaultValue: ''
+      defaultValue: 'ntfy.sh'
     },
     {
-      key: 'deviceTokens',
-      name: 'Device tokens (managed)',
+      key: 'deviceEndpoints',
+      name: 'Device endpoints (managed)',
       description: 'Auto-managed by the app. Do not edit.',
       type: 'string',
       defaultValue: '{}'
@@ -175,40 +110,48 @@ export async function onLoad(ctx) {
 
   const dbPath = join(ctx.path, '..', '..', 'db.sqlite');
 
-  let tokensByUser = {};
+  let endpointsByUser = {};
   try {
-    tokensByUser = JSON.parse(settings.get('deviceTokens') || '{}') || {};
+    endpointsByUser = JSON.parse(settings.get('deviceEndpoints') || '{}') || {};
   } catch {
-    tokensByUser = {};
+    endpointsByUser = {};
   }
 
-  const persistTokens = () => {
+  const persist = () => {
     try {
-      settings.set('deviceTokens', JSON.stringify(tokensByUser));
+      settings.set('deviceEndpoints', JSON.stringify(endpointsByUser));
     } catch (error) {
-      ctx.error?.('reef-push: failed to persist tokens', error);
+      ctx.error?.('reef-push: failed to persist endpoints', error);
     }
   };
 
   ctx.actions.register({
-    name: 'saveFcmToken',
-    description: 'Register the calling device for push notifications.',
+    name: 'savePushEndpoint',
+    description: 'Register the calling device for push (UnifiedPush endpoint).',
     execute: async (invoker, payload) => {
-      const token =
-        payload && typeof payload.token === 'string' ? payload.token : null;
+      const endpoint =
+        payload && typeof payload.endpoint === 'string'
+          ? payload.endpoint
+          : null;
       const userId = invoker && invoker.userId;
 
-      if (!token || !userId) {
+      if (!endpoint || !userId) {
         return { ok: false };
       }
 
-      const key = String(userId);
-      const list = tokensByUser[key] || [];
+      const allowedHosts = parseAllowedHosts(settings.get('allowedEndpointHosts'));
+      if (!isEndpointAllowed(endpoint, allowedHosts)) {
+        ctx.error?.('reef-push: rejected endpoint (host not allow-listed)', endpoint);
+        return { ok: false, reason: 'host_not_allowed' };
+      }
 
-      if (!list.includes(token)) {
-        list.push(token);
-        tokensByUser[key] = list.slice(-MAX_DEVICES_PER_USER);
-        persistTokens();
+      const key = String(userId);
+      const list = endpointsByUser[key] || [];
+
+      if (!list.includes(endpoint)) {
+        list.push(endpoint);
+        endpointsByUser[key] = list.slice(-MAX_ENDPOINTS_PER_USER);
+        persist();
       }
 
       return { ok: true };
@@ -216,47 +159,32 @@ export async function onLoad(ctx) {
   });
 
   ctx.actions.register({
-    name: 'removeFcmToken',
-    description: 'Unregister the calling device from push notifications.',
+    name: 'removePushEndpoint',
+    description: 'Unregister the calling device from push.',
     execute: async (invoker, payload) => {
-      const token =
-        payload && typeof payload.token === 'string' ? payload.token : null;
+      const endpoint =
+        payload && typeof payload.endpoint === 'string'
+          ? payload.endpoint
+          : null;
       const userId = invoker && invoker.userId;
 
-      if (!token || !userId) {
+      if (!endpoint || !userId) {
         return { ok: false };
       }
 
       const key = String(userId);
 
-      if (tokensByUser[key]) {
-        tokensByUser[key] = tokensByUser[key].filter((t) => t !== token);
-        persistTokens();
+      if (endpointsByUser[key]) {
+        endpointsByUser[key] = endpointsByUser[key].filter((e) => e !== endpoint);
+        persist();
       }
 
       return { ok: true };
     }
   });
-
-  const getServiceAccount = () => {
-    try {
-      const raw = settings.get('serviceAccountJson');
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  };
 
   ctx.events.on('message:created', async (msg) => {
     try {
-      const sa = getServiceAccount();
-      const projectId = settings.get('projectId');
-
-      // Not configured yet — stay inert.
-      if (!sa || !projectId) {
-        return;
-      }
-
       // Ignore plugin/system-authored messages.
       if (msg.pluginId) {
         return;
@@ -287,14 +215,16 @@ export async function onLoad(ctx) {
 
       const targets = [];
       for (const uid of recipients) {
-        for (const token of tokensByUser[String(uid)] || []) {
-          targets.push({ uid, token });
+        for (const endpoint of endpointsByUser[String(uid)] || []) {
+          targets.push({ uid, endpoint });
         }
       }
 
       if (targets.length === 0) {
         return;
       }
+
+      const allowedHosts = parseAllowedHosts(settings.get('allowedEndpointHosts'));
 
       let title = 'New message';
       try {
@@ -310,38 +240,44 @@ export async function onLoad(ctx) {
         (msg.textContent || '').trim().slice(0, MAX_BODY_LEN) ||
         'Sent you a message';
 
-      const accessToken = await getAccessToken(sa);
       let pruned = false;
 
-      for (const { uid, token } of targets) {
-        const res = await sendFcm(projectId, accessToken, token, title, body, {
-          channelId: String(msg.channelId)
-        });
+      for (const { uid, endpoint } of targets) {
+        if (!isEndpointAllowed(endpoint, allowedHosts)) {
+          continue; // allow-list may have changed since registration
+        }
 
-        if (!res.ok && isDeadToken(res.status, res.out)) {
-          const key = String(uid);
-          tokensByUser[key] = (tokensByUser[key] || []).filter(
-            (t) => t !== token
-          );
-          pruned = true;
-        } else if (!res.ok) {
-          ctx.error?.(
-            `reef-push: FCM send failed (${res.status})`,
-            (res.out && res.out.error && res.out.error.message) || ''
-          );
+        try {
+          const res = await sendPush(endpoint, {
+            title,
+            body,
+            channelId: String(msg.channelId)
+          });
+
+          if (!res.ok && isDeadEndpoint(res.status)) {
+            const key = String(uid);
+            endpointsByUser[key] = (endpointsByUser[key] || []).filter(
+              (e) => e !== endpoint
+            );
+            pruned = true;
+          } else if (!res.ok) {
+            ctx.error?.(`reef-push: push failed (${res.status})`);
+          }
+        } catch (error) {
+          ctx.error?.('reef-push: push request error', error?.message || error);
         }
       }
 
       if (pruned) {
-        persistTokens();
+        persist();
       }
     } catch (error) {
-      ctx.error?.('reef-push: push handler error', error?.message || error);
+      ctx.error?.('reef-push: handler error', error?.message || error);
     }
   });
 
   ctx.ui.enable();
-  ctx.log?.('reef-push loaded');
+  ctx.log?.('reef-push (ntfy/UnifiedPush) loaded');
 }
 
 export async function onUnload(ctx) {
