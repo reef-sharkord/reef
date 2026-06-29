@@ -22,6 +22,10 @@ public class ForegroundService extends Service {
 
     private static final String CHANNEL_ID = "uncord_connection";
     private static final int NOTIFICATION_ID = 4711;
+    // True while the service is running. MainActivity reads this to keep the
+    // WebView's JS awake in the background only while connected. (best-effort
+    // keep-alive — the proper killed-app fix is push/FCM.)
+    public static volatile boolean isRunning = false;
     private PowerManager.WakeLock wakeLock;
 
     @Override
@@ -41,6 +45,11 @@ public class ForegroundService extends Service {
                 .build();
 
         startForeground(NOTIFICATION_ID, notification);
+        isRunning = true;
+        // Flag read by MainActivity (app module) to keep the WebView awake in the
+        // background while connected. Use prefs to avoid a cross-module class ref.
+        getSharedPreferences("reef", MODE_PRIVATE)
+                .edit().putBoolean("bg_active", true).apply();
 
         if (wakeLock == null) {
             PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
@@ -56,6 +65,9 @@ public class ForegroundService extends Service {
 
     @Override
     public void onDestroy() {
+        isRunning = false;
+        getSharedPreferences("reef", MODE_PRIVATE)
+                .edit().putBoolean("bg_active", false).apply();
         if (wakeLock != null && wakeLock.isHeld()) {
             wakeLock.release();
         }
