@@ -9,6 +9,7 @@ import { getActiveStore, store } from '@/features/store';
 import { getDesktopApi } from '@/helpers/desktop';
 import { getFileUrl, getFileUrlForHost } from '@/helpers/get-file-url';
 import { getHostForStore, setActiveHost } from '@/lib/connections';
+import { isServerMuted } from '@/lib/notification-prefs';
 import {
   getPlainTextFromHtml,
   hasMention,
@@ -165,7 +166,12 @@ export const addMessages = (
     const isChannelInForeground =
       isActiveServer && isChannelTextVisible && !isWindowHidden;
 
-    if (!isFromOwnUser) {
+    // Per-server mute: suppress the ping sound + notification for this server
+    // (it still accrues an unread badge). The bound store maps to its host.
+    const boundHost = getHostForStore(getActiveStore());
+    const muted = boundHost ? isServerMuted(boundHost) : false;
+
+    if (!isFromOwnUser && !muted) {
       const isThreadReply = !!targetMessage.parentMessageId;
 
       if (isThreadReply) {

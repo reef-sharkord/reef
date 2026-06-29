@@ -60,4 +60,42 @@ const setNotifPref = (host: string, key: TNotifPrefKey, value: boolean) => {
   writeMap(map);
 };
 
-export { getNotifPrefsOverride, setNotifPref };
+// --- per-server mute -----------------------------------------------------------
+// A muted server suppresses notification popups + ping sounds for that server,
+// independent of the granular notification prefs. Stored as a host list.
+const MUTED_KEY = LocalStorageKey.MUTED_SERVERS;
+
+const readMuted = (): string[] => {
+  const raw = getLocalStorageItem(MUTED_KEY);
+
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+
+    return Array.isArray(parsed) ? parsed.filter((h) => typeof h === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+
+const isServerMuted = (host: string): boolean => readMuted().includes(host);
+
+const setServerMuted = (host: string, muted: boolean) => {
+  const current = readMuted().filter((h) => h !== host);
+
+  if (muted) {
+    current.push(host);
+  }
+
+  setLocalStorageItem(MUTED_KEY, JSON.stringify(current));
+};
+
+export {
+  getNotifPrefsOverride,
+  isServerMuted,
+  setNotifPref,
+  setServerMuted
+};

@@ -2,14 +2,16 @@ import { AddServerForm } from '@/components/add-server-form';
 import { removeServer } from '@/features/server/actions';
 import { useRailServers } from '@/hooks/use-connections';
 import { setActiveHost, type RailServer } from '@/lib/connections';
+import { isServerMuted, setServerMuted } from '@/lib/notification-prefs';
 import { cn } from '@/lib/utils';
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger
 } from '@sharkord/ui';
-import { LogOut, Plus } from 'lucide-react';
+import { Bell, BellOff, LogOut, Plus } from 'lucide-react';
 import { memo, useState } from 'react';
 
 const initialsOf = (name: string) =>
@@ -27,7 +29,16 @@ const statusColor = (status: RailServer['status']) => {
   }
 };
 
-const RailTile = memo(({ server }: { server: RailServer }) => (
+const RailTile = memo(({ server }: { server: RailServer }) => {
+  const [muted, setMuted] = useState(() => isServerMuted(server.host));
+
+  const toggleMuted = () => {
+    const next = !muted;
+    setServerMuted(server.host, next);
+    setMuted(next);
+  };
+
+  return (
   <ContextMenu>
     <ContextMenuTrigger asChild>
       <button
@@ -64,6 +75,15 @@ const RailTile = memo(({ server }: { server: RailServer }) => (
       </button>
     </ContextMenuTrigger>
     <ContextMenuContent>
+      <ContextMenuItem onSelect={toggleMuted}>
+        {muted ? (
+          <Bell className="mr-2 h-4 w-4" />
+        ) : (
+          <BellOff className="mr-2 h-4 w-4" />
+        )}
+        {muted ? 'Unmute server' : 'Mute server'}
+      </ContextMenuItem>
+      <ContextMenuSeparator />
       <ContextMenuItem
         variant="destructive"
         onSelect={() => removeServer(server.host)}
@@ -73,7 +93,8 @@ const RailTile = memo(({ server }: { server: RailServer }) => (
       </ContextMenuItem>
     </ContextMenuContent>
   </ContextMenu>
-));
+  );
+});
 
 const Rail = memo(({ className }: { className?: string }) => {
   const servers = useRailServers();

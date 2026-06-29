@@ -39,7 +39,9 @@ export enum LocalStorageKey {
   SAVED_SERVERS = 'uncord-saved-servers',
   // Uncord per-host notification preference overrides, so each server's
   // notification settings are independent. (UNCORD_PLAN.md §3.5, M4)
-  NOTIFICATION_PREFS = 'uncord-notification-prefs'
+  NOTIFICATION_PREFS = 'uncord-notification-prefs',
+  // Per-server mute (suppress notification popups + ping sounds). (M4)
+  MUTED_SERVERS = 'uncord-muted-servers'
 }
 
 export enum SessionStorageKey {
