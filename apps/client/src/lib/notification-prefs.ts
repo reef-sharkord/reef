@@ -93,9 +93,50 @@ const setServerMuted = (host: string, muted: boolean) => {
   setLocalStorageItem(MUTED_KEY, JSON.stringify(current));
 };
 
+// --- per-channel mute ----------------------------------------------------------
+// Same idea, keyed by "host:channelId" so a single noisy channel can be silenced
+// without muting its whole server.
+const MUTED_CHANNELS_KEY = LocalStorageKey.MUTED_CHANNELS;
+
+const channelKey = (host: string, channelId: number) => `${host}:${channelId}`;
+
+const readMutedChannels = (): string[] => {
+  const raw = getLocalStorageItem(MUTED_CHANNELS_KEY);
+
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+
+    return Array.isArray(parsed)
+      ? parsed.filter((k) => typeof k === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+const isChannelMuted = (host: string, channelId: number): boolean =>
+  readMutedChannels().includes(channelKey(host, channelId));
+
+const setChannelMuted = (host: string, channelId: number, muted: boolean) => {
+  const key = channelKey(host, channelId);
+  const current = readMutedChannels().filter((k) => k !== key);
+
+  if (muted) {
+    current.push(key);
+  }
+
+  setLocalStorageItem(MUTED_CHANNELS_KEY, JSON.stringify(current));
+};
+
 export {
   getNotifPrefsOverride,
+  isChannelMuted,
   isServerMuted,
+  setChannelMuted,
   setNotifPref,
   setServerMuted
 };

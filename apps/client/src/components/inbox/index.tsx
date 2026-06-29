@@ -1,12 +1,28 @@
 import { setDmsOpen } from '@/features/server/actions';
 import { setSelectedChannelId } from '@/features/server/channels/actions';
 import { useInbox } from '@/hooks/use-inbox';
-import { setActiveHost } from '@/lib/connections';
+import { getConnection, setActiveHost } from '@/lib/connections';
 import { getRailCustom } from '@/lib/rail-prefs';
-import type { InboxEntry } from '@/lib/inbox';
-import { Hash, MessagesSquare, X } from 'lucide-react';
+import type { InboxEntry, InboxServer } from '@/lib/inbox';
+import { CheckCheck, Hash, MessagesSquare, X } from 'lucide-react';
 import { memo } from 'react';
 import { createPortal } from 'react-dom';
+
+const markServerRead = (server: InboxServer) => {
+  const conn = getConnection(server.host);
+
+  if (!conn) {
+    return;
+  }
+
+  server.entries.forEach((entry) => {
+    if (entry.kind === 'channel' && entry.channelId != null) {
+      void conn.trpc.channels.markAsRead
+        .mutate({ channelId: entry.channelId })
+        .catch(() => {});
+    }
+  });
+};
 
 const initialsOf = (name: string) =>
   name.trim().slice(0, 2).toUpperCase() || '?';
@@ -80,9 +96,17 @@ const Inbox = memo(({ onClose }: { onClose: () => void }) => {
                         {initialsOf(name)}
                       </span>
                     )}
-                    <span className="truncate text-xs font-semibold text-muted-foreground">
+                    <span className="flex-1 truncate text-xs font-semibold text-muted-foreground">
                       {name}
                     </span>
+                    <button
+                      type="button"
+                      title="Mark all read"
+                      onClick={() => markServerRead(server)}
+                      className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" />
+                    </button>
                   </div>
 
                   {server.entries.map((entry) => (

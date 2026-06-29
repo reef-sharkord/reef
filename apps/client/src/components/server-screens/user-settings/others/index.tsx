@@ -15,6 +15,7 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Appearance } from './appearance';
 import { DesktopStartupSettings } from './desktop-startup-settings';
+import { DndSettings } from './dnd-settings';
 
 const Others = memo(() => {
   const { t } = useTranslation('settings');
@@ -47,6 +48,7 @@ const Others = memo(() => {
     </Card>
 
       <Appearance />
+      <DndSettings />
     </div>
   );
 });

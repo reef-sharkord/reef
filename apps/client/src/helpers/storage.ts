@@ -42,6 +42,10 @@ export enum LocalStorageKey {
   NOTIFICATION_PREFS = 'uncord-notification-prefs',
   // Per-server mute (suppress notification popups + ping sounds). (M4)
   MUTED_SERVERS = 'uncord-muted-servers',
+  // Per-channel mute (host:channelId list). (M8)
+  MUTED_CHANNELS = 'reef-muted-channels',
+  // Do-Not-Disturb + quiet hours. (M8)
+  DND_SETTINGS = 'reef-dnd',
   // Rail tile order (array of hosts) and per-server local overrides
   // (custom name/color). Client-only personalization. (M8)
   RAIL_ORDER = 'reef-rail-order',
