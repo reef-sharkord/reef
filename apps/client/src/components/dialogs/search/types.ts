@@ -34,12 +34,16 @@ export type TUnifiedSearchResult =
       type: 'message';
       createdAt: number;
       key: string;
+      host: string;
+      serverName: string;
       item: TSearchResultMessage;
     }
   | {
       type: 'file';
       createdAt: number;
       key: string;
+      host: string;
+      serverName: string;
       item: TSearchResultFile;
     };
 

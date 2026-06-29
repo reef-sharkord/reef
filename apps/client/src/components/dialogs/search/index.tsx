@@ -2,6 +2,7 @@ import type { TDialogBaseProps } from '@/components/dialogs/types';
 import { PaginatedList } from '@/components/paginated-list';
 import { jumpToMessage } from '@/features/server/actions';
 import { useOnEsc } from '@/hooks/use-on-esc';
+import { setActiveHost } from '@/lib/connections';
 import type { TMessageJumpToTarget } from '@/types';
 import {
   Dialog,
@@ -10,7 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
-  Spinner
+  Spinner,
+  Switch
 } from '@sharkord/ui';
 import { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,11 +29,20 @@ const SearchDialog = memo(({ isOpen, close }: TSearchDialogProps) => {
   const { t } = useTranslation('dialogs');
   useOnEsc(close);
 
-  const { query, setQuery, loading, canSearch, unifiedResults } =
-    useSearch(isOpen);
+  const {
+    query,
+    setQuery,
+    scope,
+    setScope,
+    serverCount,
+    loading,
+    canSearch,
+    unifiedResults
+  } = useSearch(isOpen);
 
   const onJump = useCallback(
-    (target: TMessageJumpToTarget) => {
+    (target: TMessageJumpToTarget, host: string) => {
+      setActiveHost(host);
       jumpToMessage(target);
       close();
     },
@@ -58,6 +69,16 @@ const SearchDialog = memo(({ isOpen, close }: TSearchDialogProps) => {
                 className="h-10"
               />
             </div>
+
+            {serverCount > 1 && (
+              <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+                <Switch
+                  checked={scope === 'all'}
+                  onCheckedChange={(v) => setScope(v ? 'all' : 'active')}
+                />
+                Search all servers
+              </label>
+            )}
           </DialogHeader>
 
           <div className="flex min-h-0 flex-1 flex-col px-5 py-4">
@@ -86,23 +107,26 @@ const SearchDialog = memo(({ isOpen, close }: TSearchDialogProps) => {
                   className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1"
                   getItemKey={(entry) => entry.key}
                 >
-                  {(entry) => {
-                    if (entry.type === 'message') {
-                      return (
+                  {(entry) => (
+                    <div>
+                      {scope === 'all' && (
+                        <div className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {entry.serverName}
+                        </div>
+                      )}
+                      {entry.type === 'message' ? (
                         <SearchResultMessageCard
                           message={entry.item}
-                          onJump={onJump}
+                          onJump={(target) => onJump(target, entry.host)}
                         />
-                      );
-                    }
-
-                    return (
-                      <SearchResultFileCard
-                        result={entry.item}
-                        onJump={onJump}
-                      />
-                    );
-                  }}
+                      ) : (
+                        <SearchResultFileCard
+                          result={entry.item}
+                          onJump={(target) => onJump(target, entry.host)}
+                        />
+                      )}
+                    </div>
+                  )}
                 </PaginatedList.List>
 
                 <PaginatedList.Pagination
