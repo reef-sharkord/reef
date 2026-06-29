@@ -1,0 +1,8 @@
+{
+  "id": "reef-push",
+  "name": "REEF Push",
+  "author": "REEF",
+  "description": "Firebase Cloud Messaging push for DMs and @mentions, so REEF mobile is notified even when the app is closed. Fully self-contained — runs on a stock Sharkord server.",
+  "version": "0.1.0",
+  "sdkVersion": 1
+}
