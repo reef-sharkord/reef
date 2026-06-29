@@ -1279,7 +1279,10 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
   return (
     <VoiceProviderContext.Provider value={contextValue}>
       <VolumeControlProvider>
-        <div className="relative">
+        {/* h-full so the app height chain reaches ServerView (which fills with
+            h-full under the title-bar shell); the bar/card below are overlays
+            (fixed/absolute) so they don't consume flow height. */}
+        <div className="relative h-full">
           {/* Persistent remote-audio sink: keeps voice audible while viewing
               another server, since the per-channel grid unmounts on switch.
               (UNCORD_PLAN.md §3.4, M2) */}
