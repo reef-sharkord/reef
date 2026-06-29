@@ -45,7 +45,11 @@ export enum LocalStorageKey {
   // Rail tile order (array of hosts) and per-server local overrides
   // (custom name/color). Client-only personalization. (M8)
   RAIL_ORDER = 'reef-rail-order',
-  RAIL_CUSTOM = 'reef-rail-custom'
+  RAIL_CUSTOM = 'reef-rail-custom',
+  // Appearance: accent color + text scale. Client-only. (M8)
+  APPEARANCE = 'reef-appearance',
+  // Push-to-talk keybind (in-app). (M8)
+  PUSH_TO_TALK = 'reef-push-to-talk'
 }
 
 export enum SessionStorageKey {

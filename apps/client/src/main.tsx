@@ -27,11 +27,13 @@ import { exposePluginStore } from './features/server/plugins/plugin-store.ts';
 import { store } from './features/store.ts';
 import { exposeLibs, exposeReact } from './helpers/exposes.ts';
 import { LocalStorageKey } from './helpers/storage.ts';
+import { applyAppearance } from './lib/appearance.ts';
 import './index.css';
 
 exposeReact();
 exposeLibs();
 exposePluginStore();
+applyAppearance();
 
 await i18nReady;
 

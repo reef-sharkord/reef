@@ -13,6 +13,7 @@ import {
 } from '@sharkord/ui';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Appearance } from './appearance';
 import { DesktopStartupSettings } from './desktop-startup-settings';
 
 const Others = memo(() => {
@@ -20,7 +21,8 @@ const Others = memo(() => {
   const autoJoinLastChannel = useAutoJoinLastChannel();
 
   return (
-    <Card>
+    <div className="space-y-6">
+      <Card>
       <CardHeader>
         <CardTitle>{t('othersTitle')}</CardTitle>
         <CardDescription>{t('othersDesc')}</CardDescription>
@@ -43,6 +45,9 @@ const Others = memo(() => {
         {isDesktop() && <DesktopStartupSettings />}
       </CardContent>
     </Card>
+
+      <Appearance />
+    </div>
   );
 });
 
