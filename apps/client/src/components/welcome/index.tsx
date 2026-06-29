@@ -3,6 +3,7 @@ import { Button } from '@sharkord/ui';
 import { Plus } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReefBackdrop } from './reef-backdrop';
 
 /**
  * Standalone (native shell) welcome / empty state shown when no server has been
@@ -13,7 +14,9 @@ const Welcome = memo(() => {
   const [adding, setAdding] = useState(false);
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-6 p-6 text-center">
+    <div className="relative isolate flex h-full w-full flex-col items-center justify-center gap-6 overflow-hidden p-6 text-center">
+      <ReefBackdrop />
+
       <img
         src={`${import.meta.env.BASE_URL}icon-192.png`}
         alt="REEF"
