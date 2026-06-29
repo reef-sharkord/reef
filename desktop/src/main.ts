@@ -134,6 +134,8 @@ const createWindow = () => {
     backgroundColor: '#171717',
     autoHideMenuBar: true,
     show: !startHidden,
+    // Frameless: the client draws its own title bar (REEF). Still OS-resizable.
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -154,6 +156,15 @@ const createWindow = () => {
     // Bundled client (apps/client built with --base=./ into ../renderer).
     void mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
+
+  // Tell the renderer's custom title bar whether the window is maximized so it
+  // can toggle the maximize/restore button.
+  mainWindow.on('maximize', () => {
+    mainWindow?.webContents.send('window:maximized', true);
+  });
+  mainWindow.on('unmaximize', () => {
+    mainWindow?.webContents.send('window:maximized', false);
+  });
 
   // Closing hides to the tray instead of quitting (unless we're really quitting).
   mainWindow.on('close', (event) => {
@@ -234,6 +245,18 @@ if (!gotSingleInstanceLock) {
     ipcMain.handle('update:quitAndInstall', () => autoUpdater.quitAndInstall());
     // Renderer asks to bring the window forward (e.g. a notification click).
     ipcMain.handle('window:focus', () => showWindow());
+    // Custom title bar window controls.
+    ipcMain.handle('window:minimize', () => mainWindow?.minimize());
+    ipcMain.handle('window:toggleMaximize', () => {
+      if (!mainWindow) return;
+      if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize();
+      } else {
+        mainWindow.maximize();
+      }
+    });
+    ipcMain.handle('window:close', () => mainWindow?.close());
+    ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
     // Unread badge from the renderer (total across servers + mention flag).
     ipcMain.handle('badge:set', (_event, count: number, hasMentions: boolean) =>
       setUnreadBadge(count, hasMentions)

@@ -19,6 +19,7 @@ import { SavedServersController } from './components/routing/saved-servers-contr
 import { Routing } from './components/routing/index.tsx';
 import { ServerScreensProvider } from './components/server-screens/index.tsx';
 import { ThemeProvider } from './components/theme-provider/index.tsx';
+import { Titlebar } from './components/titlebar/index.tsx';
 import { UpdateNotifier } from './components/routing/update-notifier.tsx';
 import { VoiceProvider } from './components/voice-provider/index.tsx';
 import { VoiceStoreProvider } from './components/voice-provider/voice-store-provider.tsx';
@@ -56,11 +57,16 @@ createRoot(document.getElementById('root')!).render(
             <BackgroundConnectionController />
             <DesktopController />
             <UpdateNotifier />
-            <VoiceStoreProvider>
-              <VoiceProvider>
-                <Routing />
-              </VoiceProvider>
-            </VoiceStoreProvider>
+            <div className="flex h-dvh flex-col">
+              <Titlebar />
+              <div className="min-h-0 flex-1">
+                <VoiceStoreProvider>
+                  <VoiceProvider>
+                    <Routing />
+                  </VoiceProvider>
+                </VoiceStoreProvider>
+              </div>
+            </div>
           </DevicesProvider>
         </Provider>
       </GlobalErrorBoundary>

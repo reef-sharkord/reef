@@ -25,6 +25,17 @@ const api = {
   // Bring the window forward (e.g. on notification click).
   focusWindow: (): Promise<void> => ipcRenderer.invoke('window:focus'),
 
+  // Custom title bar window controls.
+  minimizeWindow: (): Promise<void> => ipcRenderer.invoke('window:minimize'),
+  toggleMaximizeWindow: (): Promise<void> =>
+    ipcRenderer.invoke('window:toggleMaximize'),
+  closeWindow: (): Promise<void> => ipcRenderer.invoke('window:close'),
+  isWindowMaximized: (): Promise<boolean> =>
+    ipcRenderer.invoke('window:isMaximized'),
+  onMaximizeChange: (cb: (maximized: boolean) => void) => {
+    ipcRenderer.on('window:maximized', (_e, maximized: boolean) => cb(maximized));
+  },
+
   // Global media hotkeys fired from the main process.
   onToggleMic: (cb: () => void) => {
     ipcRenderer.on('hotkey:toggle-mic', () => cb());

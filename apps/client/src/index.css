@@ -431,3 +431,11 @@ body {
   width: 100% !important;
   max-width: 100% !important;
 }
+
+/* Desktop (Electron frameless) custom title bar drag regions. */
+.app-drag {
+  -webkit-app-region: drag;
+}
+.app-no-drag {
+  -webkit-app-region: no-drag;
+}

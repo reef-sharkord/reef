@@ -25,6 +25,11 @@ declare global {
       openAtLogin: boolean,
       openInTray: boolean
     ) => Promise<void>;
+    minimizeWindow: () => Promise<void>;
+    toggleMaximizeWindow: () => Promise<void>;
+    closeWindow: () => Promise<void>;
+    isWindowMaximized: () => Promise<boolean>;
+    onMaximizeChange: (cb: (maximized: boolean) => void) => void;
   }
 
   interface Window {
