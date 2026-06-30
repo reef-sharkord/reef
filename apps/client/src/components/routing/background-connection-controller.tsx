@@ -1,5 +1,5 @@
-import { useRailServers } from '@/hooks/use-connections';
 import { getNativePlugin, isNativeApp } from '@/helpers/native';
+import { useRailServers } from '@/hooks/use-connections';
 import { memo, useEffect } from 'react';
 
 /**

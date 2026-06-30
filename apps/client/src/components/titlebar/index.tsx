@@ -35,7 +35,9 @@ const Titlebar = memo(() => {
           alt=""
           className="h-4 w-4 rounded"
         />
-        <span className="text-xs font-semibold text-muted-foreground">REEF</span>
+        <span className="text-xs font-semibold text-muted-foreground">
+          REEF
+        </span>
       </div>
 
       <div className="flex items-center">

@@ -8,8 +8,7 @@
  * the rail and persisted. The native shells build the client with
  * `VITE_STANDALONE=true` to switch into this mode. (UNCORD_PLAN.md M6/M7)
  */
-const isStandalone = (): boolean =>
-  import.meta.env.VITE_STANDALONE === 'true';
+const isStandalone = (): boolean => import.meta.env.VITE_STANDALONE === 'true';
 
 /** Whether a bare `host[:port]` points at the local machine. */
 const isLocalHost = (host: string): boolean =>

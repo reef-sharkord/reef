@@ -1,9 +1,9 @@
-import { store } from '@/features/store';
 import { useCurrentVoiceChannelId } from '@/features/server/channels/hooks';
 import { useWebRtcSimulcastEnabled } from '@/features/server/hooks';
 import { playSound } from '@/features/server/sounds/actions';
 import { SoundType } from '@/features/server/types';
 import { useOwnVoiceState } from '@/features/server/voice/hooks';
+import { store } from '@/features/store';
 import {
   clampMicrophoneDecibels,
   MICROPHONE_GATE_CLOSE_HOLD_MS,
@@ -49,16 +49,16 @@ import {
   useState
 } from 'react';
 import { Provider } from 'react-redux';
-import { useDevices } from '../devices-provider/hooks/use-devices';
-import {
-  clearVoiceControlsBridge,
-  setVoiceControlsBridge
-} from './controls-bridge';
 import { ExternalAudioStreams } from '../channel-view/voice/external-audio-streams';
 import {
   ScreenShareAudioStreams,
   VoiceAudioStreams
 } from '../channel-view/voice/voice-audio-streams';
+import { useDevices } from '../devices-provider/hooks/use-devices';
+import {
+  clearVoiceControlsBridge,
+  setVoiceControlsBridge
+} from './controls-bridge';
 import { FloatingPinnedCard } from './floating-pinned-card';
 import { GlobalVoiceBar } from './global-voice-bar';
 import {

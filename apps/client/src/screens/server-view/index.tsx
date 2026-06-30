@@ -1,7 +1,7 @@
 import { LeftSidebar } from '@/components/left-sidebar';
 import { ModViewSheet } from '@/components/mod-view-sheet';
-import { Rail } from '@/components/rail';
 import { Protect } from '@/components/protect';
+import { Rail } from '@/components/rail';
 import { RightSidebar } from '@/components/right-sidebar';
 import { ThreadSidebar } from '@/components/thread-sidebar';
 import { TopBar } from '@/components/top-bar';
@@ -97,78 +97,78 @@ const ServerView = memo(() => {
       className="flex h-full flex-col bg-background text-foreground dark"
       {...swipeHandlers}
     >
-        <TopBar
-          onToggleRightSidebar={handleDesktopRightSidebarToggle}
-          isOpen={isDesktopRightSidebarOpen}
-        />
-        <div className="relative flex min-h-0 flex-1 overflow-hidden">
-          <PreventBrowser />
+      <TopBar
+        onToggleRightSidebar={handleDesktopRightSidebarToggle}
+        isOpen={isDesktopRightSidebarOpen}
+      />
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
+        <PreventBrowser />
 
-          {isMobileMenuOpen && (
-            <div
-              className="md:hidden fixed inset-0 bg-black/50 z-30"
-              onClick={() => setIsMobileMenuOpen(false)}
-            />
-          )}
-
-          {isMobileUsersOpen && (
-            <div
-              className="lg:hidden fixed inset-0 bg-black/50 z-30"
-              onClick={() => setIsMobileUsersOpen(false)}
-            />
-          )}
-
-          <LeftSidebar
-            className={cn(
-              'md:relative md:flex fixed inset-0 left-0 h-full z-40 md:z-0 transition-transform duration-300 ease-in-out',
-              isMobileMenuOpen
-                ? 'translate-x-0'
-                : '-translate-x-full md:translate-x-0'
-            )}
+        {isMobileMenuOpen && (
+          <div
+            className="md:hidden fixed inset-0 bg-black/50 z-30"
+            onClick={() => setIsMobileMenuOpen(false)}
           />
+        )}
 
-          {/* Mobile rail — swipe-right stage 2, hidden on desktop (the rail is
+        {isMobileUsersOpen && (
+          <div
+            className="lg:hidden fixed inset-0 bg-black/50 z-30"
+            onClick={() => setIsMobileUsersOpen(false)}
+          />
+        )}
+
+        <LeftSidebar
+          className={cn(
+            'md:relative md:flex fixed inset-0 left-0 h-full z-40 md:z-0 transition-transform duration-300 ease-in-out',
+            isMobileMenuOpen
+              ? 'translate-x-0'
+              : '-translate-x-full md:translate-x-0'
+          )}
+        />
+
+        {/* Mobile rail — swipe-right stage 2, hidden on desktop (the rail is
               always visible there via Routing). Slides in over the channel
               drawer's left edge; tap the backdrop or swipe left to dismiss. */}
-          {isRailOpen && (
-            <div
-              className="md:hidden fixed inset-0 bg-black/50 z-[45]"
-              onClick={() => setIsRailOpen(false)}
-            />
+        {isRailOpen && (
+          <div
+            className="md:hidden fixed inset-0 bg-black/50 z-[45]"
+            onClick={() => setIsRailOpen(false)}
+          />
+        )}
+
+        <Rail
+          className={cn(
+            'md:hidden fixed top-0 bottom-0 left-0 z-50 transition-transform duration-300 ease-in-out',
+            isRailOpen ? 'translate-x-0' : '-translate-x-full'
           )}
+        />
 
-          <Rail
-            className={cn(
-              'md:hidden fixed top-0 bottom-0 left-0 z-50 transition-transform duration-300 ease-in-out',
-              isRailOpen ? 'translate-x-0' : '-translate-x-full'
-            )}
-          />
+        <ContentWrapper
+          isDmMode={dmsOpen}
+          selectedDmChannelId={selectedDmChannelId}
+        />
 
-          <ContentWrapper
-            isDmMode={dmsOpen}
-            selectedDmChannelId={selectedDmChannelId}
-          />
+        <VoiceChatSidebar />
 
-          <VoiceChatSidebar />
+        <ThreadSidebar isOpen={isThreadSidebarOpen} />
 
-          <ThreadSidebar isOpen={isThreadSidebarOpen} />
+        <RightSidebar
+          className={cn(
+            'fixed top-0 bottom-0 right-0 h-full z-40',
+            'lg:relative lg:z-0',
+            isMobileUsersOpen
+              ? 'translate-x-0 lg:translate-x-0'
+              : 'translate-x-full lg:translate-x-0'
+          )}
+          isOpen={isMobileUsersOpen || isDesktopRightSidebarOpen}
+        />
 
-          <RightSidebar
-            className={cn(
-              'fixed top-0 bottom-0 right-0 h-full z-40',
-              'lg:relative lg:z-0',
-              isMobileUsersOpen
-                ? 'translate-x-0 lg:translate-x-0'
-                : 'translate-x-full lg:translate-x-0'
-            )}
-            isOpen={isMobileUsersOpen || isDesktopRightSidebarOpen}
-          />
-
-          <Protect permission={Permission.MANAGE_USERS}>
-            <ModViewSheet />
-          </Protect>
-        </div>
+        <Protect permission={Permission.MANAGE_USERS}>
+          <ModViewSheet />
+        </Protect>
       </div>
+    </div>
   );
 });
 

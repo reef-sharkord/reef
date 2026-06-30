@@ -2,6 +2,7 @@ import { setIsAutoConnecting } from '@/features/app/actions';
 import { useIsAppLoading, useIsPluginsLoading } from '@/features/app/hooks';
 import { connect } from '@/features/server/actions';
 import { useDisconnectInfo, useIsConnected } from '@/features/server/hooks';
+import { isStandalone } from '@/helpers/standalone';
 import {
   getLocalStorageItem,
   getLocalStorageItemBool,
@@ -11,7 +12,6 @@ import {
   setLocalStorageItemBool,
   setSessionStorageItem
 } from '@/helpers/storage';
-import { isStandalone } from '@/helpers/standalone';
 import { memo, useEffect, useRef } from 'react';
 
 const AutoLoginController = memo(() => {

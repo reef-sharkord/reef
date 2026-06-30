@@ -43,7 +43,8 @@ const getVoiceConnection = (): VoiceConnection | null => voiceConnection;
  * voice is pinned, so voice controls behave exactly as before in the single-
  * server / not-in-call case.
  */
-const getVoiceStore = (): ServerStore => voiceConnection?.store ?? getActiveStore();
+const getVoiceStore = (): ServerStore =>
+  voiceConnection?.store ?? getActiveStore();
 
 /**
  * The tRPC client bound to the voice-hosting server. Falls back to the active
@@ -73,7 +74,8 @@ const subscribeVoiceConnection = (listener: () => void) => {
   };
 };
 
-const getVoiceConnectionSnapshot = (): VoiceConnection | null => voiceConnection;
+const getVoiceConnectionSnapshot = (): VoiceConnection | null =>
+  voiceConnection;
 
 export {
   clearVoiceConnection,

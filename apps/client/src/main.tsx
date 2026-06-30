@@ -15,20 +15,20 @@ import { AutoLoginController } from './components/routing/auto-login-controller.
 import { BackgroundConnectionController } from './components/routing/background-connection-controller.tsx';
 import { DesktopController } from './components/routing/desktop-controller.tsx';
 import { ForegroundResumeController } from './components/routing/foreground-resume-controller.tsx';
-import { SavedServersController } from './components/routing/saved-servers-controller.tsx';
 import { Routing } from './components/routing/index.tsx';
+import { SavedServersController } from './components/routing/saved-servers-controller.tsx';
+import { UpdateNotifier } from './components/routing/update-notifier.tsx';
 import { ServerScreensProvider } from './components/server-screens/index.tsx';
 import { ThemeProvider } from './components/theme-provider/index.tsx';
 import { Titlebar } from './components/titlebar/index.tsx';
-import { UpdateNotifier } from './components/routing/update-notifier.tsx';
 import { VoiceProvider } from './components/voice-provider/index.tsx';
 import { VoiceStoreProvider } from './components/voice-provider/voice-store-provider.tsx';
 import { exposePluginStore } from './features/server/plugins/plugin-store.ts';
 import { store } from './features/store.ts';
 import { exposeLibs, exposeReact } from './helpers/exposes.ts';
 import { LocalStorageKey } from './helpers/storage.ts';
-import { applyAppearance } from './lib/appearance.ts';
 import './index.css';
+import { applyAppearance } from './lib/appearance.ts';
 
 exposeReact();
 exposeLibs();

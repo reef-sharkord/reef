@@ -2,7 +2,10 @@
  * Access to the Capacitor native bridge (present only in the Android/iOS shell).
  * The web/desktop builds have no `window.Capacitor`, so callers no-op there.
  */
-type NativePlugin = Record<string, ((...args: unknown[]) => Promise<unknown>) | undefined>;
+type NativePlugin = Record<
+  string,
+  ((...args: unknown[]) => Promise<unknown>) | undefined
+>;
 
 type CapacitorBridge = {
   isNativePlatform?: () => boolean;

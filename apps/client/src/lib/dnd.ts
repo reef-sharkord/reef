@@ -35,7 +35,10 @@ const read = (): Dnd => {
   try {
     const parsed = JSON.parse(raw);
 
-    return { ...DEFAULTS, ...(parsed && typeof parsed === 'object' ? parsed : {}) };
+    return {
+      ...DEFAULTS,
+      ...(parsed && typeof parsed === 'object' ? parsed : {})
+    };
   } catch {
     return { ...DEFAULTS };
   }

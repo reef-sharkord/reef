@@ -37,7 +37,9 @@ const GlobalVoiceBar = memo(() => {
   );
   const channelId = useCurrentVoiceChannelId();
   const channelName = useSelector((state: IRootState) =>
-    channelId !== undefined ? channelByIdSelector(state, channelId)?.name : undefined
+    channelId !== undefined
+      ? channelByIdSelector(state, channelId)?.name
+      : undefined
   );
   const { ownVoiceState, toggleMic, toggleSound } = useVoice();
 

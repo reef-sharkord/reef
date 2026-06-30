@@ -1,8 +1,8 @@
+import { getVoiceControlsBridge } from '@/components/voice-provider/controls-bridge';
 import {
   setModifierKeysHeldMap,
   togglePluginSlotDebug
 } from '@/features/app/actions';
-import { getVoiceControlsBridge } from '@/components/voice-provider/controls-bridge';
 import { isDesktop } from '@/helpers/desktop';
 import { memo, useCallback, useEffect } from 'react';
 

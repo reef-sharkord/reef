@@ -1,4 +1,8 @@
-import { getActiveHost, getConnection, getRailServers } from '@/lib/connections';
+import {
+  getActiveHost,
+  getConnection,
+  getRailServers
+} from '@/lib/connections';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import type { TSearchResults, TUnifiedSearchResult } from './types';

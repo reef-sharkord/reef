@@ -112,11 +112,8 @@ const ScreenShareCard = memo(
     const webRtcSimulcastEnabled = useWebRtcSimulcastEnabled();
     const volumeKey = getUserScreenVolumeKey(userId);
 
-    const {
-      screenShareRef,
-      hasScreenShareStream,
-      hasScreenShareAudioStream
-    } = useVoiceRefs(userId);
+    const { screenShareRef, hasScreenShareStream, hasScreenShareAudioStream } =
+      useVoiceRefs(userId);
 
     const { transportStats, getConsumerCodec } = useVoice();
 

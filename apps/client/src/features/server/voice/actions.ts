@@ -183,7 +183,9 @@ export const joinVoice = async (
 
   active.store.dispatch(serverSliceActions.setCurrentVoiceChannelId(channelId));
 
-  const { micMuted, soundMuted } = ownVoiceStateSelector(active.store.getState());
+  const { micMuted, soundMuted } = ownVoiceStateSelector(
+    active.store.getState()
+  );
 
   try {
     const { routerRtpCapabilities } = await active.trpc.voice.join.mutate({

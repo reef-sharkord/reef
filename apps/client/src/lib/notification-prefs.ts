@@ -75,7 +75,9 @@ const readMuted = (): string[] => {
   try {
     const parsed = JSON.parse(raw);
 
-    return Array.isArray(parsed) ? parsed.filter((h) => typeof h === 'string') : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((h) => typeof h === 'string')
+      : [];
   } catch {
     return [];
   }

@@ -45,10 +45,7 @@ const DesktopStartupSettings = memo(() => {
       </Group>
 
       {openAtLogin && (
-        <Group
-          label={t('startInTrayLabel')}
-          description={t('startInTrayDesc')}
-        >
+        <Group label={t('startInTrayLabel')} description={t('startInTrayDesc')}>
           <Switch
             checked={openInTray}
             onCheckedChange={(value) => apply(openAtLogin, value)}

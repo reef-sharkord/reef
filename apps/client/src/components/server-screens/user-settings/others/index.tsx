@@ -24,28 +24,28 @@ const Others = memo(() => {
   return (
     <div className="space-y-6">
       <Card>
-      <CardHeader>
-        <CardTitle>{t('othersTitle')}</CardTitle>
-        <CardDescription>{t('othersDesc')}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Group
-          label={t('autoJoinLastChannelLabel')}
-          description={t('autoJoinLastChannelDesc')}
-        >
-          <Switch
-            checked={autoJoinLastChannel}
-            onCheckedChange={(value) => setAutoJoinLastChannel(value)}
-          />
-        </Group>
+        <CardHeader>
+          <CardTitle>{t('othersTitle')}</CardTitle>
+          <CardDescription>{t('othersDesc')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Group
+            label={t('autoJoinLastChannelLabel')}
+            description={t('autoJoinLastChannelDesc')}
+          >
+            <Switch
+              checked={autoJoinLastChannel}
+              onCheckedChange={(value) => setAutoJoinLastChannel(value)}
+            />
+          </Group>
 
-        <Group label={t('languageLabel')} description={t('languageDesc')}>
-          <LanguageSwitcher />
-        </Group>
+          <Group label={t('languageLabel')} description={t('languageDesc')}>
+            <LanguageSwitcher />
+          </Group>
 
-        {isDesktop() && <DesktopStartupSettings />}
-      </CardContent>
-    </Card>
+          {isDesktop() && <DesktopStartupSettings />}
+        </CardContent>
+      </Card>
 
       <Appearance />
       <DndSettings />
