@@ -123,6 +123,41 @@ const shouldStartHidden = () =>
   process.argv.includes('--hidden') ||
   app.getLoginItemSettings().wasOpenedAsHidden;
 
+// Only ever hand these schemes to the OS shell. A chat client renders
+// user-supplied links; without this, a crafted `file://`, `smb://`, or
+// `ms-msdt:` link handed to `shell.openExternal` is a known RCE/credential-leak
+// vector.
+const isSafeExternalUrl = (url: string): boolean => {
+  try {
+    const { protocol } = new URL(url);
+    return protocol === 'https:' || protocol === 'http:' || protocol === 'mailto:';
+  } catch {
+    return false;
+  }
+};
+
+const openExternalSafely = (url: string) => {
+  if (isSafeExternalUrl(url)) {
+    void shell.openExternal(url);
+  } else {
+    log.warn(`[security] blocked openExternal for unsafe url: ${url}`);
+  }
+};
+
+// The renderer must never navigate the top frame off our own origin — a remote
+// page loaded in the main frame would inherit the full `uncordDesktop` preload
+// bridge. In prod the app is a local file://; in dev it's the Vite server.
+const isInternalNavigation = (url: string): boolean => {
+  try {
+    if (app.isPackaged) {
+      return new URL(url).protocol === 'file:';
+    }
+    return new URL(url).origin === new URL(DEV_SERVER_URL).origin;
+  } catch {
+    return false;
+  }
+};
+
 const createWindow = () => {
   const startHidden = shouldStartHidden();
 
@@ -132,6 +167,7 @@ const createWindow = () => {
     minWidth: 940,
     minHeight: 600,
     backgroundColor: '#171717',
+    icon: path.join(__dirname, '../renderer/icon-512.png'),
     autoHideMenuBar: true,
     show: !startHidden,
     // Frameless: the client draws its own title bar (REEF). Still OS-resizable.
@@ -145,9 +181,33 @@ const createWindow = () => {
 
   // Open external links in the user's browser, never inside the app window.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    openExternalSafely(url);
     return { action: 'deny' };
   });
+
+  // Allow opening DevTools in any build (useful for diagnosing the self-hosted
+  // app): F12 or Ctrl+Shift+I.
+  mainWindow.webContents.on('before-input-event', (_event, input) => {
+    if (
+      input.type === 'keyDown' &&
+      (input.key === 'F12' ||
+        (input.control && input.shift && input.key.toLowerCase() === 'i'))
+    ) {
+      mainWindow?.webContents.toggleDevTools();
+    }
+  });
+
+  // Block any top-frame navigation away from our own origin (anchor clicks,
+  // injected redirects); send safe external URLs to the browser instead.
+  const guardNavigation = (event: Electron.Event, url: string) => {
+    if (isInternalNavigation(url)) {
+      return;
+    }
+    event.preventDefault();
+    openExternalSafely(url);
+  };
+  mainWindow.webContents.on('will-navigate', guardNavigation);
+  mainWindow.webContents.on('will-redirect', guardNavigation);
 
   if (!app.isPackaged) {
     void mainWindow.loadURL(DEV_SERVER_URL);
@@ -195,8 +255,29 @@ const setupAutoUpdates = () => {
   const overrideUrl = process.env.UNCORD_UPDATE_URL;
 
   if (overrideUrl) {
-    autoUpdater.setFeedURL({ provider: 'generic', url: overrideUrl });
-    log.info(`[auto-update] feed overridden -> ${overrideUrl}`);
+    // Builds are unsigned, so the only integrity check is the sha512 in
+    // latest.yml — fetched over this same feed. An http feed is therefore
+    // MITM-spoofable; require https (allow http only for an explicit localhost
+    // test feed).
+    let isSafeFeed = false;
+    try {
+      const { protocol, hostname } = new URL(overrideUrl);
+      isSafeFeed =
+        protocol === 'https:' ||
+        (protocol === 'http:' &&
+          (hostname === 'localhost' || hostname === '127.0.0.1'));
+    } catch {
+      isSafeFeed = false;
+    }
+
+    if (isSafeFeed) {
+      autoUpdater.setFeedURL({ provider: 'generic', url: overrideUrl });
+      log.info(`[auto-update] feed overridden -> ${overrideUrl}`);
+    } else {
+      log.warn(
+        `[auto-update] ignoring unsafe UNCORD_UPDATE_URL (need https): ${overrideUrl}`
+      );
+    }
   }
 
   autoUpdater.autoDownload = true;
@@ -215,8 +296,8 @@ const setupAutoUpdates = () => {
   });
 
   autoUpdater.on('error', (err) => {
-    // never crash the app over a failed update check
-    console.error('[auto-update] error', err);
+    // never crash the app over a failed update check (log to main.log)
+    log.error('[auto-update] error', err);
   });
 
   void autoUpdater.checkForUpdatesAndNotify();
@@ -240,6 +321,13 @@ if (!gotSingleInstanceLock) {
   });
 
   app.whenReady().then(() => {
+    // Windows: bind the running app to its installed identity so the taskbar
+    // shows REEF's icon (and notifications group under it) instead of a generic
+    // Electron icon. Must be set before the window is created.
+    if (process.platform === 'win32') {
+      app.setAppUserModelId('com.reef.desktop');
+    }
+
     ipcMain.handle('app:getVersion', () => app.getVersion());
     // Triggered from the renderer (e.g. an in-app "Restart to update" button).
     ipcMain.handle('update:quitAndInstall', () => autoUpdater.quitAndInstall());

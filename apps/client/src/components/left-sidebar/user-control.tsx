@@ -53,10 +53,10 @@ const UserControl = memo(() => {
           variant="ghost"
           size="icon"
           className={cn(
-            'h-8 w-8 hover:bg-muted/50',
+            'h-8 w-8',
             ownVoiceState.micMuted
-              ? 'text-red-500 hover:text-red-400 bg-red-500/10 hover:bg-red-500/20'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'bg-red-500 text-white hover:bg-red-600 hover:text-white'
+              : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
           )}
           onClick={toggleMic}
           title={ownVoiceState.micMuted ? t('unmuteMic') : t('muteMic')}
@@ -75,10 +75,10 @@ const UserControl = memo(() => {
           variant="ghost"
           size="icon"
           className={cn(
-            'h-8 w-8 hover:bg-muted/50',
+            'h-8 w-8',
             ownVoiceState.soundMuted
-              ? 'text-red-500 hover:text-red-400 bg-red-500/10 hover:bg-red-500/20'
-              : 'text-muted-foreground hover:text-foreground'
+              ? 'bg-red-500 text-white hover:bg-red-600 hover:text-white'
+              : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
           )}
           onClick={toggleSound}
           title={ownVoiceState.soundMuted ? t('undeafen') : t('deafen')}

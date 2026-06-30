@@ -432,5 +432,26 @@
   "failedDeleteFile": "Failed to delete file",
 
   "standard": "Standard",
-  "experimental": "experimental"
+  "experimental": "experimental",
+
+  "appearanceTitle": "Appearance",
+  "appearanceDesc": "Personalize REEF's look on this device.",
+  "themeLabel": "Theme",
+  "themeDesc": "Light, dark, or follow your system.",
+  "themeSystem": "System",
+  "themeDark": "Dark",
+  "themeLight": "Light",
+  "accentColorLabel": "Accent color",
+  "accentColorDesc": "Buttons, badges, and highlights.",
+  "accentDefault": "Default",
+  "textSizeLabel": "Text size",
+
+  "dndTitle": "Do Not Disturb",
+  "dndDesc": "Silence notification popups and ping sounds. Unread badges still update.",
+  "dndToggleLabel": "Do Not Disturb",
+  "dndToggleDesc": "Silence everything until you turn it off.",
+  "quietHoursLabel": "Quiet hours",
+  "quietHoursDesc": "Automatically enable DND during a daily window.",
+  "quietWindowLabel": "Window",
+  "quietWindowDesc": "Start and end (local time)."
 }

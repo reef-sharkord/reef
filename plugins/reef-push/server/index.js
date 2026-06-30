@@ -41,11 +41,15 @@ const isEndpointAllowed = (endpoint, allowedHosts) => {
   }
 };
 
+const PUSH_TIMEOUT_MS = 5000;
+
 const sendPush = async (endpoint, payload) => {
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    // A hung relay must not stall the per-target sequential send loop.
+    signal: AbortSignal.timeout(PUSH_TIMEOUT_MS)
   });
 
   return { ok: res.ok, status: res.status };
@@ -77,13 +81,25 @@ const getDmParticipantIds = (dbPath, channelId) => {
   }
 };
 
+// Only count genuine mention spans (data-type="mention"), mirroring the
+// canonical packages/shared has-mention helper. A bare data-user-id (reply
+// quotes, user cards, embeds) must not trigger a push.
 const parseMentionedUserIds = (content) => {
   const ids = new Set();
-  const re = /data-user-id="(\d+)"/g;
+  const spanRe = /<span\b[^>]*>/g;
   let match;
 
-  while ((match = re.exec(content || ''))) {
-    ids.add(Number(match[1]));
+  while ((match = spanRe.exec(content || ''))) {
+    const tag = match[0];
+
+    if (!/\bdata-type="mention"/.test(tag)) {
+      continue;
+    }
+
+    const idMatch = /\bdata-user-id="(\d+)"/.exec(tag);
+    if (idMatch) {
+      ids.add(Number(idMatch[1]));
+    }
   }
 
   return ids;
@@ -98,6 +114,14 @@ export async function onLoad(ctx) {
         'Comma-separated hostnames the server may send pushes to. Defaults to ntfy.sh; add your self-hosted ntfy host (e.g. "ntfy.sh,push.example.com").',
       type: 'string',
       defaultValue: 'ntfy.sh'
+    },
+    {
+      key: 'includeDmContent',
+      name: 'Include DM text in push',
+      description:
+        'When OFF (default), DM pushes show only the sender name and no message text, so DM content never transits the push relay. Turn ON to include the message preview (use only with a trusted/self-hosted ntfy).',
+      type: 'boolean',
+      defaultValue: false
     },
     {
       key: 'deviceEndpoints',
@@ -192,11 +216,13 @@ export async function onLoad(ctx) {
 
       const authorId = msg.userId;
       const recipients = parseMentionedUserIds(msg.content);
+      let isDmChannel = false;
 
       try {
         const channel = await ctx.data.getChannel(msg.channelId);
 
         if (channel && channel.isDm) {
+          isDmChannel = true;
           for (const id of getDmParticipantIds(dbPath, msg.channelId)) {
             recipients.add(id);
           }
@@ -236,9 +262,16 @@ export async function onLoad(ctx) {
         // keep default title
       }
 
+      // Privacy: by default a DM push carries only the sender name (in `title`)
+      // and a generic body, so DM content never reaches the relay. Channel
+      // @mentions still include a short preview. Opt in to DM previews via the
+      // `includeDmContent` setting (intended for trusted/self-hosted ntfy).
+      const includeDmContent = settings.get('includeDmContent');
+      const previewText = (msg.textContent || '').trim().slice(0, MAX_BODY_LEN);
       const body =
-        (msg.textContent || '').trim().slice(0, MAX_BODY_LEN) ||
-        'Sent you a message';
+        isDmChannel && !includeDmContent
+          ? 'Sent you a direct message'
+          : previewText || 'Sent you a message';
 
       let pruned = false;
 

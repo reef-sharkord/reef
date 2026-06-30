@@ -2,7 +2,7 @@
   "id": "reef-push",
   "name": "REEF Push",
   "author": "REEF",
-  "description": "Firebase Cloud Messaging push for DMs and @mentions, so REEF mobile is notified even when the app is closed. Fully self-contained — runs on a stock Sharkord server.",
+  "description": "UnifiedPush/ntfy push for DMs and @mentions, so REEF mobile is notified even when the app is closed. No Google/Firebase. Runs on a stock Sharkord server; DM bodies are kept off the relay by default.",
   "version": "0.1.0",
   "sdkVersion": 1
 }

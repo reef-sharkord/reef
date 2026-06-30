@@ -2,11 +2,12 @@ import { setDmsOpen } from '@/features/server/actions';
 import { setSelectedChannelId } from '@/features/server/channels/actions';
 import { useInbox } from '@/hooks/use-inbox';
 import { getConnection, setActiveHost } from '@/lib/connections';
-import { getRailCustom } from '@/lib/rail-prefs';
 import type { InboxEntry, InboxServer } from '@/lib/inbox';
+import { getRailCustom } from '@/lib/rail-prefs';
 import { CheckCheck, Hash, MessagesSquare, X } from 'lucide-react';
 import { memo } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 
 const markServerRead = (server: InboxServer) => {
   const conn = getConnection(server.host);
@@ -33,6 +34,7 @@ const initialsOf = (name: string) =>
  * server and opens the channel/DMs. Portaled to <body>. (M8)
  */
 const Inbox = memo(({ onClose }: { onClose: () => void }) => {
+  const { t } = useTranslation('sidebar');
   const servers = useInbox();
 
   const open = (host: string, entry: InboxEntry) => {
@@ -61,12 +63,12 @@ const Inbox = memo(({ onClose }: { onClose: () => void }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <h2 className="text-sm font-semibold">Inbox</h2>
+          <h2 className="text-sm font-semibold">{t('inboxTitle')}</h2>
           <button
             type="button"
             onClick={onClose}
             className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label="Close"
+            aria-label={t('inboxClose')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -76,7 +78,7 @@ const Inbox = memo(({ onClose }: { onClose: () => void }) => {
           {servers.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center text-muted-foreground">
               <span className="text-2xl">🦈</span>
-              <span className="text-sm">You're all caught up.</span>
+              <span className="text-sm">{t('inboxEmpty')}</span>
             </div>
           ) : (
             servers.map((server) => {
@@ -101,7 +103,7 @@ const Inbox = memo(({ onClose }: { onClose: () => void }) => {
                     </span>
                     <button
                       type="button"
-                      title="Mark all read"
+                      title={t('inboxMarkAllRead')}
                       onClick={() => markServerRead(server)}
                       className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                     >

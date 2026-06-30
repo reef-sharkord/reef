@@ -76,7 +76,7 @@ const SearchDialog = memo(({ isOpen, close }: TSearchDialogProps) => {
                   checked={scope === 'all'}
                   onCheckedChange={(v) => setScope(v ? 'all' : 'active')}
                 />
-                Search all servers
+                {t('searchAllServers')}
               </label>
             )}
           </DialogHeader>

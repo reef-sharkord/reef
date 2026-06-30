@@ -7,6 +7,7 @@ import {
 } from '@/helpers/get-file-url';
 import {
   closeConnection,
+  getActiveConnection,
   getActiveHost,
   getConnection,
   openConnection,
@@ -38,8 +39,6 @@ import {
 import { infoSelector } from './selectors';
 import { serverSliceActions } from './slice';
 import { type TDisconnectInfo } from './types';
-
-let unsubscribeFromServer: (() => void) | null = null;
 
 export const setConnected = (status: boolean) => {
   store.dispatch(serverSliceActions.setConnected(status));
@@ -106,7 +105,11 @@ export const connect = async () => {
     return;
   }
 
-  const { showWelcomeDialog } = await joinServer(handshakeHash, undefined, host);
+  const { showWelcomeDialog } = await joinServer(
+    handshakeHash,
+    undefined,
+    host
+  );
 
   if (showWelcomeDialog) {
     openDialog(Dialog.WELCOME_PROFILE_SETUP);
@@ -134,7 +137,17 @@ export const joinServer = async (
 
   const { initSubscriptions } = await import('./subscriptions');
 
-  unsubscribeFromServer = initSubscriptions(connection ?? undefined);
+  // Bind the subscriptions to this connection and store their teardown ON the
+  // connection entry, so closing a given server disposes exactly its own
+  // subscriptions — not whichever server happened to join last (the previous
+  // module-global behaviour misfired when active ≠ last-joined).
+  const boundConnection = connection ?? getActiveConnection();
+  const unsubscribe = initSubscriptions(connection ?? undefined);
+
+  if (boundConnection) {
+    boundConnection.subscriptionUnsub();
+    boundConnection.subscriptionUnsub = unsubscribe;
+  }
 
   runWithActiveStore(targetStore, () => {
     store.dispatch(serverSliceActions.setInitialData(data));
@@ -210,7 +223,11 @@ const joinAddedHost = async (
     return { ok: true };
   }
 
-  const { showWelcomeDialog } = await joinServer(handshakeHash, undefined, host);
+  const { showWelcomeDialog } = await joinServer(
+    handshakeHash,
+    undefined,
+    host
+  );
 
   if (showWelcomeDialog) {
     openDialog(Dialog.WELCOME_PROFILE_SETUP);
@@ -340,8 +357,10 @@ export const removeServer = (host: string) => {
 };
 
 export const disconnectFromServer = () => {
+  // cleanup() closes the active connection; closeConnection disposes that
+  // connection's own subscriptions (entry.subscriptionUnsub), so there is no
+  // separate module-global unsubscribe to call.
   cleanup();
-  unsubscribeFromServer?.();
 };
 
 export const jumpToMessage = (target: TMessageJumpToTarget) => {

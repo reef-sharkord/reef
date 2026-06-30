@@ -21,11 +21,15 @@ import {
   Slider
 } from '@sharkord/ui';
 import { memo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const Appearance = memo(() => {
+  const { t } = useTranslation('settings');
   const { theme, setTheme } = useTheme();
   const [accent, setAccentState] = useState(() => getAppearance().accent);
-  const [scale, setScaleState] = useState(() => getAppearance().textScale ?? 100);
+  const [scale, setScaleState] = useState(
+    () => getAppearance().textScale ?? 100
+  );
 
   const chooseAccent = (value?: string) => {
     setAppearance({ accent: value });
@@ -40,13 +44,11 @@ const Appearance = memo(() => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Appearance</CardTitle>
-        <CardDescription>
-          Personalize REEF's look on this device.
-        </CardDescription>
+        <CardTitle>{t('appearanceTitle')}</CardTitle>
+        <CardDescription>{t('appearanceDesc')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Group label="Theme" description="Light, dark, or follow your system.">
+        <Group label={t('themeLabel')} description={t('themeDesc')}>
           <Select
             value={theme}
             onValueChange={(v) => setTheme(v as 'light' | 'dark' | 'system')}
@@ -55,21 +57,18 @@ const Appearance = memo(() => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="system">System</SelectItem>
-              <SelectItem value="dark">Dark</SelectItem>
-              <SelectItem value="light">Light</SelectItem>
+              <SelectItem value="system">{t('themeSystem')}</SelectItem>
+              <SelectItem value="dark">{t('themeDark')}</SelectItem>
+              <SelectItem value="light">{t('themeLight')}</SelectItem>
             </SelectContent>
           </Select>
         </Group>
 
-        <Group
-          label="Accent color"
-          description="Buttons, badges, and highlights."
-        >
+        <Group label={t('accentColorLabel')} description={t('accentColorDesc')}>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              title="Default"
+              title={t('accentDefault')}
               onClick={() => chooseAccent(undefined)}
               className={`flex h-7 w-7 items-center justify-center rounded-full border bg-muted text-xs ${
                 !accent ? 'ring-2 ring-ring ring-offset-2 ring-offset-card' : ''
@@ -94,7 +93,7 @@ const Appearance = memo(() => {
           </div>
         </Group>
 
-        <Group label="Text size" description={`${scale}%`}>
+        <Group label={t('textSizeLabel')} description={`${scale}%`}>
           <Slider
             className="w-40 cursor-pointer"
             min={TEXT_SCALE_MIN}

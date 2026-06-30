@@ -1,7 +1,11 @@
 import { applyNotificationPrefs, resetApp } from '@/features/app/actions';
 import { resetDialogs } from '@/features/dialogs/actions';
 import { resetServerScreens } from '@/features/server-screens/actions';
-import { resetServerState, setDisconnectInfo } from '@/features/server/actions';
+import {
+  resetServerState,
+  setConnected,
+  setDisconnectInfo
+} from '@/features/server/actions';
 import {
   serverHasUnreadMentionsSelector,
   serverUnreadCountSelector
@@ -63,6 +67,10 @@ export type ConnectionEntry = {
   hasMentions: boolean;
   // unsubscribe from this connection's store (summary tracking)
   storeUnsub: () => void;
+  // tear down this connection's tRPC event subscriptions; set by joinServer once
+  // the server is joined, so each connection owns (and disposes) its own subs
+  // rather than a single module-global that the last join overwrites.
+  subscriptionUnsub: () => void;
 };
 
 /** Read-only view of a connection for the rail UI. */
@@ -196,7 +204,10 @@ const createEntry = (host: string): ConnectionEntry => {
       // it may claim the single resume slot — otherwise a secondary's 1006 close
       // (e.g. both sockets dropping when a mobile tab backgrounds) would clobber
       // the primary's pending resume. (UNCORD_PLAN.md §3.6)
-      if (cause && !cause.wasClean && host === getHostFromServer()) {
+      const unclean = Boolean(cause && !cause.wasClean);
+      const isPrimary = host === getHostFromServer();
+
+      if (unclean && isPrimary) {
         const token =
           tokens.get(host) ||
           getSessionStorageItem(SessionStorageKey.TOKEN) ||
@@ -208,7 +219,16 @@ const createEntry = (host: string): ConnectionEntry => {
         }
       }
 
-      closeConnection(host);
+      if (unclean && !isPrimary) {
+        // A backgrounded/secondary server dropping on a transient close (1006,
+        // sleep, Wi-Fi flap) must NOT vanish from the rail — keep its tile in a
+        // disconnected state so the user sees it dropped and can reconnect,
+        // rather than silently removing it until the next launch. Full
+        // per-secondary backoff reconnect is M3 (UNCORD_PLAN.md §3.6).
+        markDisconnected(host);
+      } else {
+        closeConnection(host);
+      }
 
       // Report the disconnect into the closing server's own store so a
       // backgrounded server dropping never shows a disconnect screen on the
@@ -272,7 +292,8 @@ const createEntry = (host: string): ConnectionEntry => {
     status: 'connecting',
     unreadCount: 0,
     hasMentions: false,
-    storeUnsub: () => {}
+    storeUnsub: () => {},
+    subscriptionUnsub: () => {}
   };
 
   // Track this server's unread summary into the rail (cross-server badges, M4).
@@ -370,6 +391,32 @@ const setConnectionMeta = (host: string, meta: ConnectionMeta) => {
 };
 
 /**
+ * Soft-disconnect a connection after an unclean drop while KEEPING its rail
+ * tile: close the socket, dispose its subscriptions, mark it 'closed', and flag
+ * its store as not-connected — but leave the entry (and its store) in the map so
+ * the rail shows a disconnected tile instead of removing the server. Used for
+ * backgrounded/secondary servers (the primary uses the resume-target path).
+ */
+const markDisconnected = (host: string) => {
+  const entry = connections.get(host);
+
+  if (!entry) {
+    return;
+  }
+
+  entry.status = 'closed';
+  entry.subscriptionUnsub();
+  entry.subscriptionUnsub = () => {};
+  entry.wsClient.close();
+
+  runWithActiveStore(entry.store, () => {
+    setConnected(false);
+  });
+
+  notify();
+};
+
+/**
  * Tear down the connection to `host`. State resets are scoped to the closing
  * server's own store so other connections are untouched; the legacy
  * single-server localStorage cleanup only runs when no connections remain.
@@ -380,6 +427,7 @@ const closeConnection = (host: string) => {
 
   if (entry) {
     entry.status = 'closed';
+    entry.subscriptionUnsub();
     entry.storeUnsub();
     entry.wsClient.close();
     connections.delete(host);

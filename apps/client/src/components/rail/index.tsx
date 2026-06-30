@@ -32,6 +32,7 @@ import {
   Plus
 } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const initialsOf = (name: string) =>
   name.trim().slice(0, 2).toUpperCase() || '?';
@@ -74,6 +75,7 @@ const RailTile = memo(
     onDrop,
     dragging
   }: TileProps) => {
+    const { t } = useTranslation('sidebar');
     const [muted, setMuted] = useState(() => isServerMuted(server.host));
 
     const toggleMuted = () => {
@@ -133,7 +135,7 @@ const RailTile = memo(
         <ContextMenuContent>
           <ContextMenuItem onSelect={onCustomize}>
             <Palette className="mr-2 h-4 w-4" />
-            Customize…
+            {t('railCustomize')}
           </ContextMenuItem>
           <ContextMenuItem onSelect={toggleMuted}>
             {muted ? (
@@ -141,16 +143,16 @@ const RailTile = memo(
             ) : (
               <BellOff className="mr-2 h-4 w-4" />
             )}
-            {muted ? 'Unmute server' : 'Mute server'}
+            {muted ? t('railUnmuteServer') : t('railMuteServer')}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem disabled={!canMoveUp} onSelect={onMoveUp}>
             <ArrowUp className="mr-2 h-4 w-4" />
-            Move up
+            {t('railMoveUp')}
           </ContextMenuItem>
           <ContextMenuItem disabled={!canMoveDown} onSelect={onMoveDown}>
             <ArrowDown className="mr-2 h-4 w-4" />
-            Move down
+            {t('railMoveDown')}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem
@@ -158,7 +160,7 @@ const RailTile = memo(
             onSelect={() => removeServer(server.host)}
           >
             <LogOut className="mr-2 h-4 w-4" />
-            Remove server
+            {t('railRemoveServer')}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
@@ -167,6 +169,7 @@ const RailTile = memo(
 );
 
 const Rail = memo(({ className }: { className?: string }) => {
+  const { t } = useTranslation('sidebar');
   const servers = useRailServers();
   const inbox = useInbox();
   const [adding, setAdding] = useState(false);
@@ -232,7 +235,7 @@ const Rail = memo(({ className }: { className?: string }) => {
       <button
         type="button"
         onClick={() => setInboxOpen(true)}
-        title="Inbox"
+        title={t('railInbox')}
         className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground transition-all hover:rounded-xl hover:text-foreground"
       >
         <InboxIcon className="h-5 w-5" />
@@ -267,7 +270,7 @@ const Rail = memo(({ className }: { className?: string }) => {
       <button
         type="button"
         onClick={() => setAdding(true)}
-        title="Add a server"
+        title={t('railAddServer')}
         className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-green-500 transition-all hover:rounded-xl"
       >
         <Plus className="h-5 w-5" />

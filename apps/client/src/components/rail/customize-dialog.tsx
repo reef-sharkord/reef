@@ -10,6 +10,7 @@ import {
 } from '@sharkord/ui';
 import { memo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 
 const SWATCHES = [
   '#ef4444',
@@ -35,6 +36,7 @@ type Props = {
  */
 const RailCustomizeDialog = memo(
   ({ host, serverName, onClose, onSaved }: Props) => {
+    const { t } = useTranslation('sidebar');
     const initial = getRailCustom(host);
     const [name, setName] = useState(initial.name ?? '');
     const [color, setColor] = useState<string | undefined>(initial.color);
@@ -59,15 +61,12 @@ const RailCustomizeDialog = memo(
         onTouchMove={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
       >
-        <Card
-          className="w-full max-w-sm"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
           <CardHeader>
-            <CardTitle>Customize server</CardTitle>
+            <CardTitle>{t('railCustomizeTitle')}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <Group label="Display name">
+            <Group label={t('railDisplayName')}>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -77,14 +76,18 @@ const RailCustomizeDialog = memo(
             </Group>
 
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Accent color</span>
+              <span className="text-sm font-medium">
+                {t('railAccentColor')}
+              </span>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  title="Default"
+                  title={t('railDefault')}
                   onClick={() => setColor(undefined)}
                   className={`flex h-7 w-7 items-center justify-center rounded-full border bg-muted text-xs ${
-                    !color ? 'ring-2 ring-primary ring-offset-2 ring-offset-card' : ''
+                    !color
+                      ? 'ring-2 ring-primary ring-offset-2 ring-offset-card'
+                      : ''
                   }`}
                 >
                   ✕
@@ -107,13 +110,13 @@ const RailCustomizeDialog = memo(
 
             <div className="flex justify-between gap-2">
               <Button variant="ghost" onClick={reset}>
-                Reset
+                {t('railReset')}
               </Button>
               <div className="flex gap-2">
                 <Button variant="ghost" onClick={onClose}>
-                  Cancel
+                  {t('railCancel')}
                 </Button>
-                <Button onClick={save}>Save</Button>
+                <Button onClick={save}>{t('railSave')}</Button>
               </div>
             </div>
           </CardContent>

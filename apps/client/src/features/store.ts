@@ -114,6 +114,21 @@ const runWithActiveStore = <T>(target: ServerStore, fn: () => T): T => {
   }
 };
 
+// `getState`/`dispatch` are STABLE closures that always read the CURRENT active
+// store. This matters because react-redux's `useSyncExternalStore` caches
+// `getSnapshot` (= `store.getState`) between renders: returning a getState bound
+// to the active store *at access time* would pin outer-Provider consumers
+// (dialogs, server-screens) to whichever store was active when they last
+// rendered. In a single-server browser that's the bootstrap store they're
+// viewing, so it works — but on standalone/secondary servers the viewed store is
+// a different instance, so their dispatches never re-rendered them (settings /
+// dialogs "wouldn't open"). Reading `activeStore` live fixes that.
+const stableGetState = () => activeStore.getState();
+const stableDispatch = ((action: unknown) =>
+  (activeStore.dispatch as (a: unknown) => unknown)(
+    action
+  )) as ServerStore['dispatch'];
+
 // Stable identity that forwards every store operation to the active store.
 // Redux store methods are closures (not `this`-dependent), but we bind anyway
 // for safety when handing functions to consumers like react-redux.
@@ -124,6 +139,16 @@ const store = new Proxy({} as ServerStore, {
     // store that was active at mount.
     if (prop === 'subscribe') {
       return proxySubscribe;
+    }
+
+    // `getState`/`dispatch` must always resolve the CURRENT active store (see
+    // note above) rather than binding to the instance active at access time.
+    if (prop === 'getState') {
+      return stableGetState;
+    }
+
+    if (prop === 'dispatch') {
+      return stableDispatch;
     }
 
     const value = Reflect.get(activeStore, prop) as unknown;
