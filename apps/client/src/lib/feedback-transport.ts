@@ -19,9 +19,9 @@ import {
 
 const WEB3FORMS_ENDPOINT = 'https://api.web3forms.com/submit';
 
-// Baked-in key (fill once obtained from web3forms.com); overridable at build
-// time via VITE_FEEDBACK_ACCESS_KEY.
-const BAKED_ACCESS_KEY = '';
+// Baked-in Web3Forms access key (delivers only to reefsharkordlobby@gmail.com,
+// so it's safe to ship); overridable at build time via VITE_FEEDBACK_ACCESS_KEY.
+const BAKED_ACCESS_KEY = '9e90e497-cc83-4a04-9934-b6b9ac531d2a';
 
 const getAccessKey = (): string => {
   const fromEnv = (
