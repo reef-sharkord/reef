@@ -1,0 +1,8 @@
+{
+  "id": "reef",
+  "name": "REEF",
+  "author": "REEF",
+  "description": "First-party REEF companion plugin. Adds server-side features the REEF client can use: a GIF search proxy (Giphy or Klipy, admin's choice, key stays server-side) and (coming) presence/custom status. Each feature has an on/off toggle. Runs on a stock Sharkord server; harmless to clients that don't use it.",
+  "version": "0.1.0",
+  "sdkVersion": 1
+}
