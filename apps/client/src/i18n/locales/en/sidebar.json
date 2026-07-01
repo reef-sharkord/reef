@@ -75,6 +75,7 @@
 
   "railInbox": "Inbox",
   "railSaved": "Saved messages",
+  "railQuickSwitch": "Quick switcher (Ctrl+P)",
   "railAddServer": "Add a server",
   "railCustomize": "Customize…",
   "railMuteServer": "Mute server",
@@ -99,6 +100,10 @@
   "savedEmpty": "No saved messages yet.",
   "savedRemove": "Remove",
   "savedNoPreview": "(no preview)",
+
+  "quickSwitchPlaceholder": "Jump to a server, channel, or DM…",
+  "quickSwitchNoResults": "No matches.",
+  "quickSwitchDms": "Direct messages",
 
   "screenSharePickerTitle": "Choose what to share",
   "screenSharePickerScreens": "Screens",

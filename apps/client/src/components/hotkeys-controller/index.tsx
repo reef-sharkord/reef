@@ -4,12 +4,20 @@ import {
   togglePluginSlotDebug
 } from '@/features/app/actions';
 import { isDesktop } from '@/helpers/desktop';
+import { openQuickSwitch } from '@/lib/quick-switch';
 import { memo, useCallback, useEffect } from 'react';
 
 const HotkeysController = memo(() => {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'F4') {
       togglePluginSlotDebug();
+    }
+
+    // Ctrl/Cmd+P opens the quick switcher (Ctrl+K stays content search).
+    if ((e.ctrlKey || e.metaKey) && !e.repeat && e.key.toLowerCase() === 'p') {
+      e.preventDefault();
+      openQuickSwitch();
+      return;
     }
 
     // Global voice hotkeys: Ctrl+Shift+M toggles the mic, Ctrl+Shift+D toggles

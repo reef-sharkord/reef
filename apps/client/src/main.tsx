@@ -11,6 +11,7 @@ import { DialogsProvider } from './components/dialogs/index.tsx';
 import { GlobalErrorBoundary } from './components/error-boundary/global-error-boundary.tsx';
 import { HotkeysController } from './components/hotkeys-controller/index.tsx';
 import { PluginsController } from './components/plugins-controller/index.tsx';
+import { QuickSwitch } from './components/quick-switch/index.tsx';
 import { AutoLoginController } from './components/routing/auto-login-controller.tsx';
 import { BackgroundConnectionController } from './components/routing/background-connection-controller.tsx';
 import { DesktopController } from './components/routing/desktop-controller.tsx';
@@ -48,6 +49,7 @@ createRoot(document.getElementById('root')!).render(
         <DebugInfo />
         <Toaster />
         <ScreenSharePicker />
+        <QuickSwitch />
         <Provider store={store}>
           <StoreDebug />
           <HotkeysController />
