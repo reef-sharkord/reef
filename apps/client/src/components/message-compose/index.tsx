@@ -1,4 +1,5 @@
 import { EmojiPicker } from '@/components/emoji-picker';
+import { GifPicker } from '@/components/gif-picker';
 import { PluginSlotRenderer } from '@/components/plugin-slot-renderer';
 import type { TTiptapInputHandle } from '@/components/tiptap-input';
 import { TiptapInput } from '@/components/tiptap-input';
@@ -328,6 +329,10 @@ const MessageCompose = memo(
                 <Smile className="h-4 w-4" />
               </Button>
             </EmojiPicker>
+            <GifPicker
+              channelId={channelId}
+              disabled={uploading || !canSendMessages}
+            />
             <Button
               size="icon"
               variant="ghost"

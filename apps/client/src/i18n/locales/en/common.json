@@ -40,6 +40,11 @@
   "unsaveMessage": "Remove from saved",
   "messageSaved": "Saved",
   "messageUnsaved": "Removed from saved",
+  "gifButton": "GIF",
+  "gifSearchPlaceholder": "Search GIFs…",
+  "gifNoResults": "No GIFs. (This server needs the REEF plugin with GIFs enabled.)",
+  "gifPoweredByGiphy": "Powered by GIPHY",
+  "gifSendFailed": "Couldn't send GIF.",
 
   "messageCannotBeEmpty": "Message cannot be empty",
   "messageEdited": "Message edited",
