@@ -24,6 +24,7 @@ import {
 } from '@/helpers/get-display-media-support';
 import { getResWidthHeight } from '@/helpers/get-res-with-height';
 import { useScreenShareSupport } from '@/hooks/use-screen-share-support';
+import { detachSoundboardMic, routeThroughSoundboard } from '@/lib/soundboard';
 import { getVoiceTRPCClient } from '@/lib/voice-connection';
 import {
   NoiseSuppression,
@@ -459,6 +460,8 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
     nsAudioContextsRef.current.forEach((ctx) => ctx.close());
     nsAudioContextsRef.current = [];
 
+    detachSoundboardMic();
+
     rawMicrophoneStreamRef.current
       ?.getTracks()
       .forEach((track) => track.stop());
@@ -616,6 +619,20 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
             logVoice('Failed to set up noise suppression', {
               error: nsError
             });
+          }
+        }
+
+        // Route through the soundboard mixer so clips can be mixed into the
+        // outgoing mic. Fail-safe: on any error keep the untouched track so the
+        // mic can't break because of the soundboard.
+        const soundboardStream = routeThroughSoundboard(transmitStream);
+
+        if (soundboardStream) {
+          const mixedTrack = soundboardStream.getAudioTracks()[0];
+
+          if (mixedTrack) {
+            transmitTrack = mixedTrack;
+            transmitStream = soundboardStream;
           }
         }
 

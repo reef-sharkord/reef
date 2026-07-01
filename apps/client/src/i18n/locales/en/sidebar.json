@@ -105,6 +105,11 @@
   "quickSwitchNoResults": "No matches.",
   "quickSwitchDms": "Direct messages",
 
+  "soundboardTitle": "Soundboard",
+  "soundboardAdd": "Add",
+  "soundboardEmpty": "Add short audio clips to play into voice.",
+  "soundboardRemove": "Remove",
+
   "screenSharePickerTitle": "Choose what to share",
   "screenSharePickerScreens": "Screens",
   "screenSharePickerWindows": "Windows",
