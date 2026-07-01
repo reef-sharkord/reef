@@ -40,13 +40,13 @@ const generateSeabed = (
   rows: number,
   rng: Rng
 ): number[] => {
-  const floor = rows - intRange(rng, 3, 5);
+  const floor = rows - intRange(rng, 6, 9);
   const heights: number[] = [];
   let h = floor;
 
   for (let c = 0; c < cols; c++) {
     h += intRange(rng, -1, 1);
-    h = clamp(h, rows - 6, rows - 2);
+    h = clamp(h, rows - 12, rows - 4);
     heights[c] = h;
 
     for (let r = h; r < rows; r++) {

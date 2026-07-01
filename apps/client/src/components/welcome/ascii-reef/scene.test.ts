@@ -14,8 +14,8 @@ describe('generateScene', () => {
 
   it('keeps the seabed near the bottom', () => {
     const scene = generateScene(180, 55, createRng(7));
-    expect(scene.seabedTop).toBeGreaterThanOrEqual(55 - 6);
-    expect(scene.seabedTop).toBeLessThanOrEqual(55 - 2);
+    expect(scene.seabedTop).toBeGreaterThanOrEqual(55 - 12);
+    expect(scene.seabedTop).toBeLessThanOrEqual(55 - 4);
   });
 
   it('places every static cell inside the grid', () => {
