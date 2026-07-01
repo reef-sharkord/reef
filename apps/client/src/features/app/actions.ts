@@ -1,17 +1,18 @@
 import { assertNotificationsPermission } from '@/helpers/assert-notifications-permission';
 import { getFileUrl, getUrlFromServer } from '@/helpers/get-file-url';
 import { isStandalone } from '@/helpers/standalone';
-import {
-  LocalStorageKey,
-  setLocalStorageItem,
-  setLocalStorageItemBool
-} from '@/helpers/storage';
+import { LocalStorageKey, setLocalStorageItemBool } from '@/helpers/storage';
 import { getActiveHost } from '@/lib/connections';
 import {
   getNotifPrefsOverride,
   setNotifPref,
   type TNotifPrefKey
 } from '@/lib/notification-prefs';
+import {
+  getVoiceChatSidebarPref,
+  setVoiceChatSidebarPref,
+  type TVoiceChatSidebarPref
+} from '@/lib/voice-chat-prefs';
 import type { TMessageJumpToTarget } from '@/types';
 import type { TServerInfo } from '@sharkord/shared';
 import { toast } from 'sonner';
@@ -270,17 +271,43 @@ export const setMessageJumpTarget = (
   payload: TMessageJumpToTarget | undefined
 ) => store.dispatch(appSliceActions.setMessageJumpTarget(payload));
 
+// Persist the voice-chat sidebar state for the active host so it survives a
+// reload without bleeding into other servers' stores.
+const persistVoiceChatSidebar = (pref: TVoiceChatSidebarPref) => {
+  const host = getActiveHost();
+
+  if (host) {
+    setVoiceChatSidebarPref(host, pref);
+  }
+};
+
+/**
+ * Apply a host's persisted voice-chat sidebar state into its store on connect,
+ * so each server independently reopens (or not) its own voice channel's chat.
+ * Hosts without a persisted entry keep the slice default (closed).
+ */
+export const applyVoiceChatSidebar = (host: string, target: ServerStore) => {
+  const pref = getVoiceChatSidebarPref(host);
+
+  if (!pref) {
+    return;
+  }
+
+  target.dispatch(
+    appSliceActions.setVoiceChatSidebar({
+      open: pref.open,
+      channelId: pref.channelId
+    })
+  );
+};
+
 export const openVoiceChatSidebar = (channelId: number) => {
   store.dispatch(
     appSliceActions.setVoiceChatSidebar({ open: true, channelId })
   );
 
   markChannelAsRead(channelId);
-  setLocalStorageItem(
-    LocalStorageKey.VOICE_CHAT_SIDEBAR_CHANNEL_ID,
-    channelId.toString()
-  );
-  setLocalStorageItemBool(LocalStorageKey.VOICE_CHAT_SIDEBAR_STATE, true);
+  persistVoiceChatSidebar({ open: true, channelId });
 };
 
 export const closeVoiceChatSidebar = () => {
@@ -294,7 +321,7 @@ export const closeVoiceChatSidebar = () => {
     })
   );
 
-  setLocalStorageItemBool(LocalStorageKey.VOICE_CHAT_SIDEBAR_STATE, false);
+  persistVoiceChatSidebar({ open: false, channelId: voiceChatChannelId });
 };
 
 export const toggleVoiceChatSidebar = (channelId: number) => {

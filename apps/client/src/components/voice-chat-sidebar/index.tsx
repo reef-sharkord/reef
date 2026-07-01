@@ -2,8 +2,12 @@ import { TextChannel } from '@/components/channel-view/text';
 import { ResizableSidebar } from '@/components/resizable-sidebar';
 import { closeVoiceChatSidebar } from '@/features/app/actions';
 import { useVoiceChatSidebar } from '@/features/app/hooks';
+import { channelByIdSelector } from '@/features/server/channels/selectors';
+import type { IRootState } from '@/features/store';
 import { LocalStorageKey } from '@/helpers/storage';
+import { ChannelType } from '@sharkord/shared';
 import { memo } from 'react';
+import { useSelector } from 'react-redux';
 
 const MIN_WIDTH = 360;
 const MAX_WIDTH = 600;
@@ -12,7 +16,17 @@ const DEFAULT_WIDTH = 384;
 const VoiceChatSidebar = memo(() => {
   const { isOpen, channelId } = useVoiceChatSidebar();
 
-  if (!channelId) {
+  // Only render for a voice channel that exists in the *current* server. This
+  // guards against a stale or foreign channel id (one persisted for another
+  // server, or a channel since deleted) — rendering the text view for such an
+  // id bugs out. (REEF multi-server)
+  const isValidVoiceChannel = useSelector((state: IRootState) =>
+    channelId !== undefined
+      ? channelByIdSelector(state, channelId)?.type === ChannelType.VOICE
+      : false
+  );
+
+  if (!channelId || !isValidVoiceChannel) {
     return null;
   }
 

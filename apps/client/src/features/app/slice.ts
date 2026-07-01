@@ -1,8 +1,4 @@
-import {
-  getLocalStorageItemAsNumber,
-  getLocalStorageItemBool,
-  LocalStorageKey
-} from '@/helpers/storage';
+import { getLocalStorageItemBool, LocalStorageKey } from '@/helpers/storage';
 import type { TDevices, TMessageJumpToTarget } from '@/types';
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
@@ -61,13 +57,11 @@ const initialState: TAppState = {
     false
   ),
   messageJumpTarget: undefined,
-  voiceChatSidebarOpen: getLocalStorageItemBool(
-    LocalStorageKey.VOICE_CHAT_SIDEBAR_STATE,
-    false
-  ),
-  voiceChatChannelId: getLocalStorageItemAsNumber(
-    LocalStorageKey.VOICE_CHAT_SIDEBAR_CHANNEL_ID
-  ),
+  // Seeded per-host on connect via applyVoiceChatSidebar — never from a global
+  // key, because voice channel ids are per-server and would otherwise bleed
+  // across servers.
+  voiceChatSidebarOpen: false,
+  voiceChatChannelId: undefined,
   pluginSlotDebug: getLocalStorageItemBool(
     LocalStorageKey.PLUGIN_SLOT_DEBUG,
     false

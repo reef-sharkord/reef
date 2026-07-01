@@ -1,4 +1,8 @@
-import { applyNotificationPrefs, resetApp } from '@/features/app/actions';
+import {
+  applyNotificationPrefs,
+  applyVoiceChatSidebar,
+  resetApp
+} from '@/features/app/actions';
 import { resetDialogs } from '@/features/dialogs/actions';
 import { resetServerScreens } from '@/features/server-screens/actions';
 import {
@@ -282,6 +286,10 @@ const createEntry = (host: string): ConnectionEntry => {
   // Apply this server's own notification preferences (if it has overrides) so
   // each server notifies independently of the others. (UNCORD_PLAN.md §3.5, M4)
   applyNotificationPrefs(host, store);
+
+  // Seed this server's own voice-chat sidebar state (per-host) so it never
+  // bleeds a foreign channel id in from another server's store.
+  applyVoiceChatSidebar(host, store);
 
   const entry: ConnectionEntry = {
     host,
