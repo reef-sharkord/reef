@@ -125,36 +125,93 @@ const shouldStartHidden = () =>
   process.argv.includes('--hidden') ||
   app.getLoginItemSettings().wasOpenedAsHidden;
 
-// Screen sharing. In the browser `getDisplayMedia()` shows the built-in picker,
+// Screen sharing. In the browser `getDisplayMedia()` shows a built-in picker,
 // but Electron requires the main process to answer the request explicitly —
-// without this handler the renderer's `getDisplayMedia()` is denied and screen
-// share silently fails. Prefer the OS's native picker where it exists (macOS 15+,
-// newer Windows); otherwise fall back to sharing the primary screen so the
-// feature still works. (A richer in-app source picker can replace the fallback.)
+// without a handler the renderer's `getDisplayMedia()` is denied and screen
+// share silently fails. We present our own in-app picker: enumerate the
+// available screens/windows (with thumbnails), ask the renderer to choose one,
+// and resolve the request with the user's pick (or deny it if they cancel).
+const SCREEN_SHARE_THUMBNAIL = { width: 320, height: 180 };
+
+type ScreenShareCallback = (streams: {
+  video?: Electron.DesktopCapturerSource;
+}) => void;
+
+let pendingScreenShareCallback: ScreenShareCallback | null = null;
+let pendingScreenShareSources: Electron.DesktopCapturerSource[] = [];
+
+// Resolve an in-flight screen-share request with the chosen source id (or null
+// to cancel). Ensures the getDisplayMedia callback is always called exactly once.
+const resolveScreenShare = (sourceId: string | null) => {
+  const callback = pendingScreenShareCallback;
+
+  if (!callback) {
+    return;
+  }
+
+  const source = sourceId
+    ? pendingScreenShareSources.find((s) => s.id === sourceId)
+    : undefined;
+
+  pendingScreenShareCallback = null;
+  pendingScreenShareSources = [];
+
+  // An empty object cancels/denies the request.
+  callback(source ? { video: source } : {});
+};
+
 const setupScreenShare = () => {
+  // The renderer's picker replies here with the chosen source id (or null to
+  // cancel). Registered once for the app's lifetime.
+  ipcMain.on('screen-share:picked', (_event, sourceId: string | null) => {
+    resolveScreenShare(sourceId);
+  });
+
   session.defaultSession.setDisplayMediaRequestHandler(
     (_request, callback) => {
       desktopCapturer
-        .getSources({ types: ['screen', 'window'] })
+        .getSources({
+          types: ['screen', 'window'],
+          thumbnailSize: SCREEN_SHARE_THUMBNAIL,
+          fetchWindowIcons: true
+        })
         .then((sources) => {
-          const primaryScreen =
-            sources.find((s) => s.id.startsWith('screen:')) ?? sources[0];
-
-          if (primaryScreen) {
-            callback({ video: primaryScreen });
-          } else {
-            // No capturable source — deny rather than hang.
+          if (!mainWindow || sources.length === 0) {
             callback({});
+            return;
           }
+
+          // Supersede any in-flight request (deny the old one) so a callback is
+          // never left dangling.
+          if (pendingScreenShareCallback) {
+            resolveScreenShare(null);
+          }
+
+          pendingScreenShareCallback = callback;
+          pendingScreenShareSources = sources;
+
+          mainWindow.webContents.send(
+            'screen-share:sources',
+            sources.map((source) => ({
+              id: source.id,
+              name: source.name,
+              thumbnail: source.thumbnail.toDataURL(),
+              appIcon:
+                source.appIcon && !source.appIcon.isEmpty()
+                  ? source.appIcon.toDataURL()
+                  : null,
+              isScreen: source.id.startsWith('screen:')
+            }))
+          );
         })
         .catch((error) => {
           log.error('[screen-share] failed to enumerate sources', error);
           callback({});
         });
     },
-    // Use the OS picker when the platform provides one; Electron ignores the
-    // callback above in that case and shows the native chooser instead.
-    { useSystemPicker: true }
+    // Always present our own in-app picker (not the OS one) for a consistent
+    // cross-platform experience.
+    { useSystemPicker: false }
   );
 };
 

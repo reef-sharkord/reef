@@ -1,5 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+/** A capturable screen or window offered to the in-app screen-share picker. */
+export type DesktopCaptureSource = {
+  id: string;
+  name: string;
+  thumbnail: string; // data URL
+  appIcon: string | null; // data URL, windows only
+  isScreen: boolean;
+};
+
 /**
  * Minimal, safe bridge exposed to the renderer (the Uncord client) as
  * `window.uncordDesktop`. Context isolation is on, so the client can only reach
@@ -57,7 +66,20 @@ const api = {
     openAtLogin: boolean,
     openInTray: boolean
   ): Promise<void> =>
-    ipcRenderer.invoke('startup:set', openAtLogin, openInTray)
+    ipcRenderer.invoke('startup:set', openAtLogin, openInTray),
+
+  // Screen-share source picker. The main process asks the renderer to choose a
+  // capture source when getDisplayMedia() is called; the renderer replies with
+  // the chosen id (or null to cancel).
+  onScreenShareSources: (cb: (sources: DesktopCaptureSource[]) => void) => {
+    ipcRenderer.on(
+      'screen-share:sources',
+      (_e, sources: DesktopCaptureSource[]) => cb(sources)
+    );
+  },
+  pickScreenShareSource: (sourceId: string | null): void => {
+    ipcRenderer.send('screen-share:picked', sourceId);
+  }
 };
 
 contextBridge.exposeInMainWorld('uncordDesktop', api);

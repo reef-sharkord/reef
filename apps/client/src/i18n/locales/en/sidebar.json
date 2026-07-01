@@ -92,5 +92,10 @@
   "inboxTitle": "Inbox",
   "inboxClose": "Close",
   "inboxEmpty": "You're all caught up.",
-  "inboxMarkAllRead": "Mark all read"
+  "inboxMarkAllRead": "Mark all read",
+
+  "screenSharePickerTitle": "Choose what to share",
+  "screenSharePickerScreens": "Screens",
+  "screenSharePickerWindows": "Windows",
+  "screenSharePickerCancel": "Cancel"
 }

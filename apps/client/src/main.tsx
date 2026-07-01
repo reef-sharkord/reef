@@ -18,6 +18,7 @@ import { ForegroundResumeController } from './components/routing/foreground-resu
 import { Routing } from './components/routing/index.tsx';
 import { SavedServersController } from './components/routing/saved-servers-controller.tsx';
 import { UpdateNotifier } from './components/routing/update-notifier.tsx';
+import { ScreenSharePicker } from './components/screen-share-picker/index.tsx';
 import { ServerScreensProvider } from './components/server-screens/index.tsx';
 import { ThemeProvider } from './components/theme-provider/index.tsx';
 import { Titlebar } from './components/titlebar/index.tsx';
@@ -46,6 +47,7 @@ createRoot(document.getElementById('root')!).render(
       <GlobalErrorBoundary>
         <DebugInfo />
         <Toaster />
+        <ScreenSharePicker />
         <Provider store={store}>
           <StoreDebug />
           <HotkeysController />

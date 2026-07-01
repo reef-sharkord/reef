@@ -3,6 +3,16 @@
 
 // Extend the Window interface for global functions
 declare global {
+  // A capturable screen or window offered to the in-app screen-share picker
+  // (mirrors desktop/src/preload.ts DesktopCaptureSource).
+  interface DesktopCaptureSource {
+    id: string;
+    name: string;
+    thumbnail: string;
+    appIcon: string | null;
+    isScreen: boolean;
+  }
+
   // Bridge exposed by the Electron desktop shell (desktop/src/preload.ts).
   // Absent in the browser and mobile.
   interface UncordDesktopApi {
@@ -30,6 +40,10 @@ declare global {
     closeWindow: () => Promise<void>;
     isWindowMaximized: () => Promise<boolean>;
     onMaximizeChange: (cb: (maximized: boolean) => void) => void;
+    onScreenShareSources: (
+      cb: (sources: DesktopCaptureSource[]) => void
+    ) => void;
+    pickScreenShareSource: (sourceId: string | null) => void;
   }
 
   interface Window {
