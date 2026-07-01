@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { TServerScreenBaseProps } from '../screens';
 import { ServerScreenLayout } from '../server-screen-layout';
 import { Devices } from './devices';
+import { Feedback } from './feedback';
 import { Notifications } from './notifications';
 import { Others } from './others';
 import { Password } from './password';
@@ -26,6 +27,7 @@ const UserSettings = memo(({ close }: TUserSettingsProps) => {
               {t('notificationsTab')}
             </TabsTrigger>
             <TabsTrigger value="others">{t('othersTab')}</TabsTrigger>
+            <TabsTrigger value="feedback">{t('feedbackTab')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className="space-y-6">
@@ -42,6 +44,9 @@ const UserSettings = memo(({ close }: TUserSettingsProps) => {
           </TabsContent>
           <TabsContent value="others" className="space-y-6">
             <Others />
+          </TabsContent>
+          <TabsContent value="feedback" className="space-y-6">
+            <Feedback />
           </TabsContent>
         </Tabs>
       </div>
