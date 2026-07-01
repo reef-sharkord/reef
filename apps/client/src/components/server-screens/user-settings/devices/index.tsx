@@ -14,7 +14,12 @@ import {
   getSuppressLocalAudioPlaybackSupport
 } from '@/helpers/get-display-media-support';
 import { useForm } from '@/hooks/use-form';
-import { NoiseSuppression, Resolution, VideoCodec } from '@/types';
+import {
+  NoiseSuppression,
+  Resolution,
+  ScreenOptimize,
+  VideoCodec
+} from '@/types';
 import { DEFAULT_BITRATE } from '@sharkord/shared';
 import {
   Alert,
@@ -603,6 +608,28 @@ const Devices = memo(() => {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label>{t('screenOptimizeLabel')}</Label>
+              <Select
+                value={values.screenOptimize ?? ScreenOptimize.MOTION}
+                onValueChange={(value) =>
+                  onChange('screenOptimize', value as ScreenOptimize)
+                }
+              >
+                <SelectTrigger className="w-56">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ScreenOptimize.MOTION}>
+                    {t('screenOptimizeMotion')}
+                  </SelectItem>
+                  <SelectItem value={ScreenOptimize.TEXT}>
+                    {t('screenOptimizeText')}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex flex-col gap-2">

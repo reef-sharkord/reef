@@ -48,6 +48,15 @@ export enum NoiseSuppression {
   DTLN = 'dtln'
 }
 
+// Screen-share optimization target. Maps to the video track's contentHint and
+// the encoder's degradation preference: TEXT keeps resolution sharp (good for
+// docs/code, may drop framerate), MOTION keeps framerate smooth (good for
+// video/games, may drop resolution). (screen-share best practices)
+export enum ScreenOptimize {
+  TEXT = 'text',
+  MOTION = 'motion'
+}
+
 export type TDeviceSettings = {
   microphoneId: string | undefined;
   playbackId: string | undefined;
@@ -68,6 +77,7 @@ export type TDeviceSettings = {
   screenFramerate: number;
   screenCodec: VideoCodec;
   screenBitrate: number;
+  screenOptimize: ScreenOptimize;
 };
 
 export type TRemoteUserStreamKinds =

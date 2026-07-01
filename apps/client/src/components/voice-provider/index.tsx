@@ -25,7 +25,12 @@ import {
 import { getResWidthHeight } from '@/helpers/get-res-with-height';
 import { useScreenShareSupport } from '@/hooks/use-screen-share-support';
 import { getVoiceTRPCClient } from '@/lib/voice-connection';
-import { NoiseSuppression, VideoCodec, type TStreamQuality } from '@/types';
+import {
+  NoiseSuppression,
+  ScreenOptimize,
+  VideoCodec,
+  type TStreamQuality
+} from '@/types';
 import {
   DEFAULT_BITRATE,
   StreamKind,
@@ -889,6 +894,13 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
       if (videoTrack) {
         logVoice('Obtained video track', { videoTrack });
 
+        // Optimize the encoder for the chosen content type: 'detail' keeps text
+        // crisp (encoder favors resolution), 'motion' keeps video smooth (favors
+        // framerate). Pairs with the degradation preference set on the sender
+        // once the producer exists.
+        videoTrack.contentHint =
+          devices.screenOptimize === ScreenOptimize.TEXT ? 'detail' : 'motion';
+
         let preferredCodec: RtpCodecCapability | undefined;
 
         if (
@@ -978,6 +990,24 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
 
         setScreenShareProducer(localScreenShareProducer.current);
 
+        // Prefer sacrificing framerate (TEXT) or resolution (MOTION) when
+        // bandwidth is constrained. Best-effort: contentHint above already sets
+        // a sensible default, and not every build exposes the RTCRtpSender.
+        const screenSender = localScreenShareProducer.current?.rtpSender;
+
+        if (screenSender) {
+          try {
+            const params = screenSender.getParameters();
+            params.degradationPreference =
+              devices.screenOptimize === ScreenOptimize.TEXT
+                ? 'maintain-resolution'
+                : 'maintain-framerate';
+            await screenSender.setParameters(params);
+          } catch (error) {
+            logVoice('Failed to set screen degradation preference', { error });
+          }
+        }
+
         localScreenShareProducer.current?.on('@close', async () => {
           logVoice('Screen share producer closed');
 
@@ -1045,6 +1075,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
     devices.screenFramerate,
     devices.screenCodec,
     devices.screenBitrate,
+    devices.screenOptimize,
     devices.restrictOwnAudio,
     devices.suppressLocalAudioPlayback,
     simulcastEnabled
