@@ -33,15 +33,16 @@ describe('generateScene', () => {
     for (const cell of scene.staticCells) {
       expect(allowedStatic.has(cell.char)).toBe(true);
     }
+    const fishGlyphs: readonly string[] = GLYPHS.fish;
     for (const fish of scene.fish) {
-      expect(GLYPHS.fish).toContain(fish.glyph);
+      expect(fishGlyphs.includes(fish.glyph)).toBe(true);
     }
   });
 
   it('spawns fish within the configured range', () => {
     const scene = generateScene(180, 55, createRng(11));
-    expect(scene.fish.length).toBeGreaterThanOrEqual(3);
-    expect(scene.fish.length).toBeLessThanOrEqual(10);
+    expect(scene.fish.length).toBeGreaterThanOrEqual(4);
+    expect(scene.fish.length).toBeLessThanOrEqual(14);
   });
 
   it('is deterministic for a given seed', () => {

@@ -72,7 +72,7 @@ const generateRocks = (
   heights: number[],
   rng: Rng
 ): void => {
-  const count = clamp(Math.round(cols / 22), 1, 8);
+  const count = clamp(Math.round(cols / 16), 2, 12);
 
   for (let i = 0; i < count; i++) {
     const col = intRange(rng, 1, cols - 2);
@@ -151,7 +151,7 @@ const generateCoral = (
   rng: Rng
 ): void => {
   // Background coral: more numerous, shorter, fainter.
-  const bgCount = clamp(Math.round(cols / 14), 2, 16);
+  const bgCount = clamp(Math.round(cols / 10), 3, 24);
   for (let i = 0; i < bgCount; i++) {
     const col = intRange(rng, 1, cols - 2);
     drawBranch(
@@ -168,7 +168,7 @@ const generateCoral = (
   }
 
   // Foreground coral: fewer, taller, stronger — drawn over the background.
-  const fgCount = clamp(Math.round(cols / 26), 1, 10);
+  const fgCount = clamp(Math.round(cols / 18), 2, 16);
   for (let i = 0; i < fgCount; i++) {
     const col = intRange(rng, 2, cols - 3);
     drawBranch(
@@ -190,7 +190,7 @@ const generateSeaweed = (
   heights: number[],
   rng: Rng
 ): Seaweed[] => {
-  const count = clamp(Math.round(cols / 16), 2, 14);
+  const count = clamp(Math.round(cols / 11), 3, 20);
   const seaweed: Seaweed[] = [];
 
   for (let i = 0; i < count; i++) {
@@ -215,7 +215,7 @@ const generateFish = (
   waterRows: number,
   rng: Rng
 ): Fish[] => {
-  const count = clamp(Math.round(cols / 26), 3, 10);
+  const count = clamp(Math.round(cols / 20), 4, 14);
   const fish: Fish[] = [];
   const top = waterRows + 2;
   const bottom = Math.max(top + 1, seabedTop - 1);
@@ -241,7 +241,7 @@ const generateParticles = (
   seabedTop: number,
   rng: Rng
 ): Particle[] => {
-  const count = clamp(Math.round((cols * rows) / 280), 8, 120);
+  const count = clamp(Math.round((cols * rows) / 200), 12, 180);
   const particles: Particle[] = [];
 
   for (let i = 0; i < count; i++) {
@@ -263,7 +263,7 @@ const generateBubbles = (
   heights: number[],
   rng: Rng
 ): Bubble[] => {
-  const columns = clamp(Math.round(cols / 45), 2, 6);
+  const columns = clamp(Math.round(cols / 32), 2, 9);
   const bubbles: Bubble[] = [];
 
   for (let i = 0; i < columns; i++) {
@@ -292,7 +292,7 @@ const generateWater = (cols: number, waterRows: number, rng: Rng): string[] => {
   for (let r = 0; r < waterRows; r++) {
     let row = '';
     for (let c = 0; c < cols; c++) {
-      row += chance(rng, 0.28) ? pick(rng, GLYPHS.water) : ' ';
+      row += chance(rng, 0.36) ? pick(rng, GLYPHS.water) : ' ';
     }
     pattern.push(row);
   }
