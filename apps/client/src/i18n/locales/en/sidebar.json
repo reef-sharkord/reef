@@ -97,5 +97,6 @@
   "screenSharePickerTitle": "Choose what to share",
   "screenSharePickerScreens": "Screens",
   "screenSharePickerWindows": "Windows",
+  "screenSharePickerShareAudio": "Share audio",
   "screenSharePickerCancel": "Cancel"
 }

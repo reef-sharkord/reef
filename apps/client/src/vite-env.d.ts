@@ -43,7 +43,10 @@ declare global {
     onScreenShareSources: (
       cb: (sources: DesktopCaptureSource[]) => void
     ) => void;
-    pickScreenShareSource: (sourceId: string | null) => void;
+    pickScreenShareSource: (
+      sourceId: string | null,
+      withAudio: boolean
+    ) => void;
   }
 
   interface Window {

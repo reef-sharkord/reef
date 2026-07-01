@@ -77,8 +77,11 @@ const api = {
       (_e, sources: DesktopCaptureSource[]) => cb(sources)
     );
   },
-  pickScreenShareSource: (sourceId: string | null): void => {
-    ipcRenderer.send('screen-share:picked', sourceId);
+  pickScreenShareSource: (
+    sourceId: string | null,
+    withAudio: boolean
+  ): void => {
+    ipcRenderer.send('screen-share:picked', { sourceId, withAudio });
   }
 };
 

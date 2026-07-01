@@ -135,36 +135,52 @@ const SCREEN_SHARE_THUMBNAIL = { width: 320, height: 180 };
 
 type ScreenShareCallback = (streams: {
   video?: Electron.DesktopCapturerSource;
+  audio?: 'loopback' | 'loopbackWithMute';
 }) => void;
+
+type ScreenSharePick = {
+  sourceId: string | null;
+  withAudio: boolean;
+};
 
 let pendingScreenShareCallback: ScreenShareCallback | null = null;
 let pendingScreenShareSources: Electron.DesktopCapturerSource[] = [];
 
 // Resolve an in-flight screen-share request with the chosen source id (or null
-// to cancel). Ensures the getDisplayMedia callback is always called exactly once.
-const resolveScreenShare = (sourceId: string | null) => {
+// to cancel), optionally including system (loopback) audio. Ensures the
+// getDisplayMedia callback is always called exactly once.
+const resolveScreenShare = (pick: ScreenSharePick) => {
   const callback = pendingScreenShareCallback;
 
   if (!callback) {
     return;
   }
 
-  const source = sourceId
-    ? pendingScreenShareSources.find((s) => s.id === sourceId)
+  const source = pick.sourceId
+    ? pendingScreenShareSources.find((s) => s.id === pick.sourceId)
     : undefined;
 
   pendingScreenShareCallback = null;
   pendingScreenShareSources = [];
 
-  // An empty object cancels/denies the request.
-  callback(source ? { video: source } : {});
+  if (!source) {
+    // An empty object cancels/denies the request.
+    callback({});
+    return;
+  }
+
+  // 'loopback' shares the system audio while you still hear it locally. Windows
+  // 10+ supports this via Chromium's WASAPI loopback; macOS needs a recent
+  // Electron + OS. If it isn't available the video still shares.
+  callback(pick.withAudio ? { video: source, audio: 'loopback' } : { video: source });
 };
 
 const setupScreenShare = () => {
-  // The renderer's picker replies here with the chosen source id (or null to
-  // cancel). Registered once for the app's lifetime.
-  ipcMain.on('screen-share:picked', (_event, sourceId: string | null) => {
-    resolveScreenShare(sourceId);
+  // The renderer's picker replies here with the chosen source (or null to
+  // cancel) and whether to include system audio. Registered once for the app's
+  // lifetime.
+  ipcMain.on('screen-share:picked', (_event, pick: ScreenSharePick) => {
+    resolveScreenShare(pick);
   });
 
   session.defaultSession.setDisplayMediaRequestHandler(
@@ -176,7 +192,14 @@ const setupScreenShare = () => {
           fetchWindowIcons: true
         })
         .then((sources) => {
-          if (!mainWindow || sources.length === 0) {
+          // Never offer REEF's own window as a share target — that produces the
+          // "hall of mirrors" recursion.
+          const ownId = mainWindow?.getMediaSourceId();
+          const offered = ownId
+            ? sources.filter((s) => s.id !== ownId)
+            : sources;
+
+          if (!mainWindow || offered.length === 0) {
             callback({});
             return;
           }
@@ -184,15 +207,15 @@ const setupScreenShare = () => {
           // Supersede any in-flight request (deny the old one) so a callback is
           // never left dangling.
           if (pendingScreenShareCallback) {
-            resolveScreenShare(null);
+            resolveScreenShare({ sourceId: null, withAudio: false });
           }
 
           pendingScreenShareCallback = callback;
-          pendingScreenShareSources = sources;
+          pendingScreenShareSources = offered;
 
           mainWindow.webContents.send(
             'screen-share:sources',
-            sources.map((source) => ({
+            offered.map((source) => ({
               id: source.id,
               name: source.name,
               thumbnail: source.thumbnail.toDataURL(),

@@ -1,5 +1,14 @@
 import { getDesktopApi } from '@/helpers/desktop';
-import { Button, Card, CardContent, CardHeader, CardTitle } from '@sharkord/ui';
+import { getLocalStorageItemAsJSON, LocalStorageKey } from '@/helpers/storage';
+import type { TDeviceSettings } from '@/types';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Switch
+} from '@sharkord/ui';
 import { AppWindow, Monitor } from 'lucide-react';
 import { memo, useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -9,9 +18,9 @@ import { useTranslation } from 'react-i18next';
  * In-app screen-share source picker (desktop only). When the user starts a
  * screen share, the Electron main process enumerates the available screens and
  * windows and asks us to choose one (see desktop/src/main.ts). We show a grid of
- * thumbnails and reply with the chosen source id — or null if the user cancels,
- * which denies the getDisplayMedia request cleanly. On the web/mobile the bridge
- * is absent, so this renders nothing.
+ * thumbnails and reply with the chosen source id (and whether to include system
+ * audio) — or null to cancel, which denies the getDisplayMedia request cleanly.
+ * On the web/mobile the bridge is absent, so this renders nothing.
  */
 const SourceTile = memo(
   ({
@@ -69,20 +78,31 @@ const Section = memo(
   )
 );
 
+const readDefaultShareAudio = (): boolean =>
+  getLocalStorageItemAsJSON<TDeviceSettings>(LocalStorageKey.DEVICES_SETTINGS)
+    ?.shareSystemAudio ?? true;
+
 const ScreenSharePicker = memo(() => {
   const { t } = useTranslation('sidebar');
   const [sources, setSources] = useState<DesktopCaptureSource[] | null>(null);
+  const [withAudio, setWithAudio] = useState<boolean>(readDefaultShareAudio);
 
   useEffect(() => {
     const api = getDesktopApi();
 
-    api?.onScreenShareSources?.((next) => setSources(next));
+    api?.onScreenShareSources?.((next) => {
+      // Re-read the saved preference each time the picker opens.
+      setWithAudio(readDefaultShareAudio());
+      setSources(next);
+    });
   }, []);
 
-  const choose = useCallback((id: string | null) => {
-    getDesktopApi()?.pickScreenShareSource(id);
+  const choose = useCallback((id: string | null, audio: boolean) => {
+    getDesktopApi()?.pickScreenShareSource(id, audio);
     setSources(null);
   }, []);
+
+  const cancel = useCallback(() => choose(null, false), [choose]);
 
   useEffect(() => {
     if (!sources) {
@@ -91,14 +111,14 @@ const ScreenSharePicker = memo(() => {
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        choose(null);
+        cancel();
       }
     };
 
     window.addEventListener('keydown', onKey);
 
     return () => window.removeEventListener('keydown', onKey);
-  }, [sources, choose]);
+  }, [sources, cancel]);
 
   if (!sources) {
     return null;
@@ -106,11 +126,12 @@ const ScreenSharePicker = memo(() => {
 
   const screens = sources.filter((s) => s.isScreen);
   const windows = sources.filter((s) => !s.isScreen);
+  const pick = (id: string) => choose(id, withAudio);
 
   return createPortal(
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
-      onClick={() => choose(null)}
+      onClick={cancel}
     >
       <Card
         className="flex max-h-[80vh] w-full max-w-3xl flex-col"
@@ -125,7 +146,7 @@ const ScreenSharePicker = memo(() => {
               title={t('screenSharePickerScreens')}
               icon={<Monitor className="h-4 w-4" />}
               sources={screens}
-              onPick={choose}
+              onPick={pick}
             />
           )}
           {windows.length > 0 && (
@@ -133,12 +154,16 @@ const ScreenSharePicker = memo(() => {
               title={t('screenSharePickerWindows')}
               icon={<AppWindow className="h-4 w-4" />}
               sources={windows}
-              onPick={choose}
+              onPick={pick}
             />
           )}
         </CardContent>
-        <div className="flex justify-end border-t border-border p-4">
-          <Button variant="ghost" onClick={() => choose(null)}>
+        <div className="flex items-center justify-between gap-4 border-t border-border p-4">
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Switch checked={withAudio} onCheckedChange={setWithAudio} />
+            {t('screenSharePickerShareAudio')}
+          </label>
+          <Button variant="ghost" onClick={cancel}>
             {t('screenSharePickerCancel')}
           </Button>
         </div>
