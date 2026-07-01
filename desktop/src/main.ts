@@ -291,6 +291,12 @@ const createWindow = () => {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false
+      // NB: we deliberately leave backgroundThrottling at its default (on).
+      // Disabling it to keep an outbound screen share full-rate while REEF sits
+      // in the tray is unreliable on Windows (it doesn't take effect with
+      // hide(), and can leave <video> elements blanked on restore). The renderer
+      // instead pauses only the *local* self-preview when unfocused, which keeps
+      // the sent stream flowing without fighting the throttler.
     }
   });
 

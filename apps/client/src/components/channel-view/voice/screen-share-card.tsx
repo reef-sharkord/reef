@@ -15,6 +15,7 @@ import { CardControls } from './card-controls';
 import { CardGradient } from './card-gradient';
 import { FullscreenButton } from './fullscreen-button';
 import { useFullscreen } from './hooks/use-fullscreen';
+import { usePausePreviewWhenHidden } from './hooks/use-pause-preview-when-hidden';
 import { useScreenShareZoom } from './hooks/use-screen-share-zoom';
 import { useVideoStats } from './hooks/use-video-stats';
 import { useVoiceRefs } from './hooks/use-voice-refs';
@@ -115,6 +116,10 @@ const ScreenShareCard = memo(
     const { screenShareRef, hasScreenShareStream, hasScreenShareAudioStream } =
       useVoiceRefs(userId);
 
+    // Pause your own preview when REEF is hidden/unfocused (preview render only;
+    // remote viewers keep seeing the share). (screen-share best practices)
+    usePausePreviewWhenHidden(screenShareRef, isOwnUser);
+
     const { transportStats, getConsumerCodec } = useVoice();
 
     const videoStats = useVideoStats(screenShareRef, hasScreenShareStream);
@@ -193,6 +198,8 @@ const ScreenShareCard = memo(
           isFullscreen
             ? 'rounded-none border-none'
             : 'rounded-lg overflow-hidden border border-border',
+          // Highlight your own live share so it's obvious you're sharing.
+          isOwnUser && !isFullscreen && 'ring-1 ring-primary',
           (!isFullscreen || isOverlayVisible) && 'group',
           className
         )}
@@ -207,6 +214,13 @@ const ScreenShareCard = memo(
         }}
       >
         <CardGradient />
+
+        {isOwnUser && (
+          <div className="absolute left-2 top-2 z-10 flex items-center gap-1.5 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
+            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+            You're sharing
+          </div>
+        )}
 
         <ScreenShareControls
           isPinned={isPinned}
@@ -244,7 +258,7 @@ const ScreenShareCard = memo(
           <div className="flex items-center gap-2 min-w-0">
             <Monitor className="size-3.5 text-purple-400 shrink-0" />
             <span className="text-white font-medium text-xs truncate">
-              {user.name}'s screen
+              {isOwnUser ? 'Your screen' : `${user.name}'s screen`}
             </span>
             {(videoStats || codec || qualityLabel) && (
               <span className="text-white/50 text-xs shrink-0">
