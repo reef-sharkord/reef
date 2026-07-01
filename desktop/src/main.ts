@@ -1,10 +1,12 @@
 import {
   app,
   BrowserWindow,
+  desktopCapturer,
   globalShortcut,
   ipcMain,
   Menu,
   nativeImage,
+  session,
   shell,
   Tray
 } from 'electron';
@@ -122,6 +124,39 @@ const registerGlobalShortcuts = () => {
 const shouldStartHidden = () =>
   process.argv.includes('--hidden') ||
   app.getLoginItemSettings().wasOpenedAsHidden;
+
+// Screen sharing. In the browser `getDisplayMedia()` shows the built-in picker,
+// but Electron requires the main process to answer the request explicitly —
+// without this handler the renderer's `getDisplayMedia()` is denied and screen
+// share silently fails. Prefer the OS's native picker where it exists (macOS 15+,
+// newer Windows); otherwise fall back to sharing the primary screen so the
+// feature still works. (A richer in-app source picker can replace the fallback.)
+const setupScreenShare = () => {
+  session.defaultSession.setDisplayMediaRequestHandler(
+    (_request, callback) => {
+      desktopCapturer
+        .getSources({ types: ['screen', 'window'] })
+        .then((sources) => {
+          const primaryScreen =
+            sources.find((s) => s.id.startsWith('screen:')) ?? sources[0];
+
+          if (primaryScreen) {
+            callback({ video: primaryScreen });
+          } else {
+            // No capturable source — deny rather than hang.
+            callback({});
+          }
+        })
+        .catch((error) => {
+          log.error('[screen-share] failed to enumerate sources', error);
+          callback({});
+        });
+    },
+    // Use the OS picker when the platform provides one; Electron ignores the
+    // callback above in that case and shows the native chooser instead.
+    { useSystemPicker: true }
+  );
+};
 
 // Only ever hand these schemes to the OS shell. A chat client renders
 // user-supplied links; without this, a crafted `file://`, `smb://`, or
@@ -373,6 +408,7 @@ if (!gotSingleInstanceLock) {
       }
     );
 
+    setupScreenShare();
     createWindow();
     setupTray();
     registerGlobalShortcuts();
