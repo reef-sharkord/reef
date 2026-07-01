@@ -60,8 +60,12 @@ const UserControl = memo(() => {
           )}
           onClick={toggleMic}
           title={ownVoiceState.micMuted ? t('unmuteMic') : t('muteMic')}
+          // Mic can be toggled outside a call (pre-mute carries into the next
+          // join); only enforce the SPEAK permission once actually in a voice
+          // channel. Deafened forces the mic muted, so it's disabled then.
           disabled={
-            !channelCan(ChannelPermission.SPEAK) || ownVoiceState.soundMuted
+            ownVoiceState.soundMuted ||
+            (!!currentVoiceChannelId && !channelCan(ChannelPermission.SPEAK))
           }
         >
           {ownVoiceState.micMuted ? (
