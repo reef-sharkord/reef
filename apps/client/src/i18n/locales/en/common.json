@@ -36,6 +36,10 @@
   "unpinMessage": "Unpin Message",
   "pinMessage": "Pin Message",
   "addReaction": "Add Reaction",
+  "saveMessage": "Save message",
+  "unsaveMessage": "Remove from saved",
+  "messageSaved": "Saved",
+  "messageUnsaved": "Removed from saved",
 
   "messageCannotBeEmpty": "Message cannot be empty",
   "messageEdited": "Message edited",

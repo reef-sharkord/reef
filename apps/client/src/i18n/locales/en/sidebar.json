@@ -74,6 +74,7 @@
   "userVolume": "User volume",
 
   "railInbox": "Inbox",
+  "railSaved": "Saved messages",
   "railAddServer": "Add a server",
   "railCustomize": "Customize…",
   "railMuteServer": "Mute server",
@@ -93,6 +94,11 @@
   "inboxClose": "Close",
   "inboxEmpty": "You're all caught up.",
   "inboxMarkAllRead": "Mark all read",
+
+  "savedTitle": "Saved messages",
+  "savedEmpty": "No saved messages yet.",
+  "savedRemove": "Remove",
+  "savedNoPreview": "(no preview)",
 
   "screenSharePickerTitle": "Choose what to share",
   "screenSharePickerScreens": "Screens",

@@ -54,7 +54,9 @@ export enum LocalStorageKey {
   PUSH_TO_TALK = 'reef-push-to-talk',
   // Per-host voice-chat sidebar state ({ open, channelId } keyed by host). Voice
   // channel ids are per-server, so this must not be shared globally. (M8)
-  VOICE_CHAT_SIDEBAR = 'reef-voice-chat-sidebar'
+  VOICE_CHAT_SIDEBAR = 'reef-voice-chat-sidebar',
+  // Cross-server saved/bookmarked messages (client-local, REEF-exclusive).
+  SAVED_MESSAGES = 'reef-saved-messages'
 }
 
 export enum SessionStorageKey {

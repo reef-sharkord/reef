@@ -8,10 +8,21 @@ import {
 import { openThreadSidebar } from '@/features/app/actions';
 import { useIsShiftHeld } from '@/features/app/hooks';
 import { requestConfirmation } from '@/features/dialogs/actions';
+import { channelByIdSelector } from '@/features/server/channels/selectors';
+import { messagesMapSelector } from '@/features/server/messages/selectors';
+import { getActiveStore } from '@/features/store';
+import { getActiveHost } from '@/lib/connections';
+import {
+  isMessageSaved,
+  previewFromContent,
+  toggleSavedMessage
+} from '@/lib/saved-messages';
 import { getTRPCClient } from '@/lib/trpc';
 import { Permission } from '@sharkord/shared';
 import { IconButton } from '@sharkord/ui';
 import {
+  Bookmark,
+  BookmarkCheck,
   MessageSquareText,
   Pencil,
   Pin,
@@ -21,7 +32,7 @@ import {
   Trash,
   Trash2
 } from 'lucide-react';
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
@@ -59,6 +70,39 @@ const MessageActions = memo(
     );
 
     const isShiftHeld = useIsShiftHeld();
+
+    const [saved, setSaved] = useState(() => {
+      const host = getActiveHost();
+
+      return host ? isMessageSaved(host, messageId) : false;
+    });
+
+    const onSaveClick = useCallback(() => {
+      const host = getActiveHost();
+
+      if (!host) {
+        return;
+      }
+
+      const state = getActiveStore().getState();
+      const channel = channelByIdSelector(state, channelId);
+      const message = messagesMapSelector(state)[channelId]?.find(
+        (m) => m.id === messageId
+      );
+
+      const next = toggleSavedMessage({
+        host,
+        channelId,
+        messageId,
+        isDm: !!channel?.isDm,
+        channelName: channel?.name ?? '',
+        preview: previewFromContent(message?.content),
+        savedAt: Date.now()
+      });
+
+      setSaved(next);
+      toast.success(next ? t('messageSaved') : t('messageUnsaved'));
+    }, [messageId, channelId, t]);
 
     const onDeleteClick = useCallback(async () => {
       if (!isShiftHeld) {
@@ -137,6 +181,14 @@ const MessageActions = memo(
             title={t('replyInThread')}
           />
         )}
+        <IconButton
+          size="sm"
+          variant="ghost"
+          icon={saved ? BookmarkCheck : Bookmark}
+          className={saved ? 'text-primary' : ''}
+          onClick={onSaveClick}
+          title={saved ? t('unsaveMessage') : t('saveMessage')}
+        />
         {canManage && (
           <>
             <IconButton
