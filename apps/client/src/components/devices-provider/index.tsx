@@ -6,6 +6,8 @@ import {
   setLocalStorageItemAsJSON
 } from '@/helpers/storage';
 import {
+  DEFAULT_PTT_KEY,
+  InputMode,
   NoiseSuppression,
   Resolution,
   ScreenOptimize,
@@ -34,6 +36,8 @@ const getDefaultDeviceSettings = (): TDeviceSettings => ({
   autoGainControl: true,
   noiseGateEnabled: false,
   noiseGateThresholdDb: MICROPHONE_GATE_DEFAULT_THRESHOLD_DB,
+  inputMode: InputMode.NORMAL,
+  pttKey: DEFAULT_PTT_KEY,
   shareSystemAudio: true,
   restrictOwnAudio: getRestrictOwnAudioSupport(),
   suppressLocalAudioPlayback: false,
@@ -229,11 +233,25 @@ const DevicesProvider = memo(({ children }: TDevicesProviderProps) => {
           ? (savedSettings.restrictOwnAudio ?? true)
           : false;
 
+        const inputModeValues = Object.values(InputMode) as string[];
+        const inputMode: InputMode = inputModeValues.includes(
+          savedSettings.inputMode as string
+        )
+          ? savedSettings.inputMode
+          : InputMode.NORMAL;
+
+        const pttKey =
+          typeof savedSettings.pttKey === 'string' && savedSettings.pttKey
+            ? savedSettings.pttKey
+            : DEFAULT_PTT_KEY;
+
         base = {
           ...defaultDeviceSettings,
           ...savedSettings,
           noiseSuppression,
-          restrictOwnAudio
+          restrictOwnAudio,
+          inputMode,
+          pttKey
         };
       } else {
         base = defaultDeviceSettings;

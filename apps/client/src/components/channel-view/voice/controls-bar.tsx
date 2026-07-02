@@ -9,6 +9,7 @@ import {
   MicOff,
   Monitor,
   PhoneOff,
+  RefreshCw,
   ScreenShareOff,
   Video,
   VideoOff
@@ -22,8 +23,13 @@ type TControlsBarProps = {
 };
 
 const ControlsBar = memo(({ channelId }: TControlsBarProps) => {
-  const { toggleMic, toggleWebcam, toggleScreenShare, isScreenShareSupported } =
-    useVoice();
+  const {
+    toggleMic,
+    toggleWebcam,
+    toggleScreenShare,
+    switchScreenShareSource,
+    isScreenShareSupported
+  } = useVoice();
   const ownVoiceState = useOwnVoiceState();
   const channelCan = useChannelCan(channelId);
   const isVisible = useControlsBarVisibility();
@@ -83,6 +89,19 @@ const ControlsBar = memo(({ channelId }: TControlsBarProps) => {
             disabledIcon={Monitor}
             enabledClassName="bg-blue-500/20 text-blue-500 hover:bg-blue-500/30 hover:text-blue-500"
             onClick={toggleScreenShare}
+            disabled={!permissions.canShareScreen}
+          />
+        )}
+
+        {isScreenShareSupported && ownVoiceState.sharingScreen && (
+          <ControlToggleButton
+            enabled={false}
+            enabledLabel="Switch Source"
+            disabledLabel="Switch Source"
+            enabledIcon={RefreshCw}
+            disabledIcon={RefreshCw}
+            enabledClassName=""
+            onClick={() => void switchScreenShareSource()}
             disabled={!permissions.canShareScreen}
           />
         )}

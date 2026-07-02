@@ -13,6 +13,7 @@ import {
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import * as path from 'node:path';
+import { setupPtt, shutdownPtt } from './ptt';
 
 // Tiny 16x16 taskbar overlay dots (red = mention, indigo = unread). Embedded as
 // data URLs so they need no file bundling.
@@ -439,6 +440,7 @@ if (!gotSingleInstanceLock) {
 
   app.on('will-quit', () => {
     globalShortcut.unregisterAll();
+    shutdownPtt();
   });
 
   app.whenReady().then(() => {
@@ -493,6 +495,13 @@ if (!gotSingleInstanceLock) {
         });
       }
     );
+
+    // Global push-to-talk (low-level keyboard hook, see ptt.ts for the
+    // privacy contract). Only the bound key's held/released state ever
+    // reaches the renderer.
+    setupPtt((held) => {
+      mainWindow?.webContents.send('ptt:held', held);
+    });
 
     setupScreenShare();
     createWindow();

@@ -26,6 +26,11 @@ declare global {
     focusWindow: () => Promise<void>;
     onToggleMic: (cb: () => void) => void;
     onToggleDeafen: (cb: () => void) => void;
+    // Global push-to-talk (optional: absent in desktop shells older than the
+    // PTT feature). bind resolves false when the OS hook is unavailable.
+    pttBind?: (code: string) => Promise<boolean>;
+    pttUnbind?: () => Promise<void>;
+    onPttHeldChange?: (cb: (held: boolean) => void) => () => void;
     setUnreadBadge: (count: number, hasMentions: boolean) => Promise<void>;
     getStartupSettings: () => Promise<{
       openAtLogin: boolean;

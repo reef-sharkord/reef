@@ -53,6 +53,21 @@ const api = {
     ipcRenderer.on('hotkey:toggle-deafen', () => cb());
   },
 
+  // Global push-to-talk. bind() starts a system-wide keyboard hook for the
+  // given KeyboardEvent.code and resolves false when unavailable (the client
+  // then falls back to window-scoped PTT). Filtering happens in the main
+  // process — only the bound key's held state ever crosses this bridge.
+  // Subscribed per voice session, so the listener returns an unsubscribe.
+  pttBind: (code: string): Promise<boolean> =>
+    ipcRenderer.invoke('ptt:bind', code),
+  pttUnbind: (): Promise<void> => ipcRenderer.invoke('ptt:unbind'),
+  onPttHeldChange: (cb: (held: boolean) => void): (() => void) => {
+    const listener = (_e: Electron.IpcRendererEvent, held: boolean) =>
+      cb(held);
+    ipcRenderer.on('ptt:held', listener);
+    return () => ipcRenderer.removeListener('ptt:held', listener);
+  },
+
   // Taskbar/dock unread badge.
   setUnreadBadge: (count: number, hasMentions: boolean): Promise<void> =>
     ipcRenderer.invoke('badge:set', count, hasMentions),

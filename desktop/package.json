@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "electron-log": "^5.2.4",
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "uiohook-napi": "^1.5.5"
   },
   "trustedDependencies": [
     "electron",

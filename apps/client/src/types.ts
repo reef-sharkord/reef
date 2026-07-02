@@ -48,6 +48,18 @@ export enum NoiseSuppression {
   DTLN = 'dtln'
 }
 
+// How the outgoing mic is activated in voice. NORMAL = open mic (mute button
+// only), PTT = transmit while the configured key is held, VAD = transmit while
+// speech is detected. (REEF; referenced from the bullshark fork's design)
+export enum InputMode {
+  NORMAL = 'normal',
+  PTT = 'ptt',
+  VAD = 'vad'
+}
+
+// KeyboardEvent.code of the default push-to-talk key.
+export const DEFAULT_PTT_KEY = 'Backquote';
+
 // Screen-share optimization target. Maps to the video track's contentHint and
 // the encoder's degradation preference: TEXT keeps resolution sharp (good for
 // docs/code, may drop framerate), MOTION keeps framerate smooth (good for
@@ -68,6 +80,8 @@ export type TDeviceSettings = {
   autoGainControl: boolean;
   noiseGateEnabled: boolean;
   noiseGateThresholdDb: number;
+  inputMode: InputMode;
+  pttKey: string;
   shareSystemAudio: boolean;
   restrictOwnAudio: boolean;
   suppressLocalAudioPlayback: boolean;

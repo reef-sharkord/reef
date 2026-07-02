@@ -27,6 +27,7 @@ import { useScreenShareSupport } from '@/hooks/use-screen-share-support';
 import { detachSoundboardMic, routeThroughSoundboard } from '@/lib/soundboard';
 import { getVoiceTRPCClient } from '@/lib/voice-connection';
 import {
+  InputMode,
   NoiseSuppression,
   ScreenOptimize,
   VideoCodec,
@@ -81,7 +82,9 @@ import {
   type TStreamQualitySettings
 } from './helpers';
 import { useLocalStreams } from './hooks/use-local-streams';
+import { usePtt } from './hooks/use-ptt';
 import { useRemoteStreams } from './hooks/use-remote-streams';
+import { useVad } from './hooks/use-vad';
 import {
   useTransportStats,
   type TransportStatsData
@@ -139,6 +142,7 @@ export type TVoiceProvider = {
     routerRtpCapabilities: RtpCapabilities,
     channelId: number
   ) => Promise<void>;
+  switchScreenShareSource: () => Promise<void>;
 } & Pick<
   ReturnType<typeof useLocalStreams>,
   | 'localAudioStream'
@@ -183,6 +187,7 @@ const VoiceProviderContext = createContext<TVoiceProvider>({
   setStreamQuality: () => Promise.resolve(),
   isSimulcastConsumer: () => false,
   init: () => Promise.resolve(),
+  switchScreenShareSource: () => Promise.resolve(),
   toggleMic: () => Promise.resolve(),
   toggleSound: () => Promise.resolve(),
   toggleWebcam: () => Promise.resolve(),
@@ -433,13 +438,25 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
   );
   const nsAudioContextsRef = useRef<AudioContext[]>([]);
   const micMutedRef = useRef(ownVoiceState.micMuted);
+  // Input mode gate (REEF): in PTT/VAD the transmit track only opens while the
+  // key is held / speech is detected. The raw stream is exposed as state so
+  // the VAD hook can analyse it (the gated transmit track would be silent).
+  const inputModeRef = useRef(devices.inputMode);
+  const pttHeldRef = useRef(false);
+  const vadSpeakingRef = useRef(false);
+  const [rawMicStream, setRawMicStream] = useState<MediaStream | null>(null);
 
   const syncTransmitMicrophoneTrackState = useCallback(() => {
     const track = transmitMicrophoneTrackRef.current;
 
     if (!track) return;
 
-    const shouldEnable = !micMutedRef.current;
+    const inputGateOpen =
+      inputModeRef.current === InputMode.NORMAL ||
+      (inputModeRef.current === InputMode.PTT && pttHeldRef.current) ||
+      (inputModeRef.current === InputMode.VAD && vadSpeakingRef.current);
+
+    const shouldEnable = !micMutedRef.current && inputGateOpen;
 
     if (track.enabled !== shouldEnable) {
       track.enabled = shouldEnable;
@@ -466,6 +483,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
       ?.getTracks()
       .forEach((track) => track.stop());
     rawMicrophoneStreamRef.current = null;
+    setRawMicStream(null);
 
     transmitMicrophoneTrackRef.current?.stop();
     transmitMicrophoneTrackRef.current = null;
@@ -475,6 +493,43 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
     micMutedRef.current = ownVoiceState.micMuted;
     syncTransmitMicrophoneTrackState();
   }, [ownVoiceState.micMuted, syncTransmitMicrophoneTrackState]);
+
+  // On input mode change, reset the gate so the new mode starts muted (PTT/
+  // VAD) or open (normal) instead of inheriting stale key/speech state.
+  useEffect(() => {
+    inputModeRef.current = devices.inputMode;
+    pttHeldRef.current = false;
+    vadSpeakingRef.current = false;
+    syncTransmitMicrophoneTrackState();
+  }, [devices.inputMode, syncTransmitMicrophoneTrackState]);
+
+  const handlePttHeldChange = useCallback(
+    (held: boolean) => {
+      pttHeldRef.current = held;
+      syncTransmitMicrophoneTrackState();
+    },
+    [syncTransmitMicrophoneTrackState]
+  );
+
+  const handleVadSpeakingChange = useCallback(
+    (speaking: boolean) => {
+      vadSpeakingRef.current = speaking;
+      syncTransmitMicrophoneTrackState();
+    },
+    [syncTransmitMicrophoneTrackState]
+  );
+
+  usePtt({
+    enabled: devices.inputMode === InputMode.PTT && !!rawMicStream,
+    pttKey: devices.pttKey,
+    onHeldChange: handlePttHeldChange
+  });
+
+  useVad({
+    enabled: devices.inputMode === InputMode.VAD,
+    rawStream: devices.inputMode === InputMode.VAD ? rawMicStream : null,
+    onSpeakingChange: handleVadSpeakingChange
+  });
 
   useEffect(() => {
     if (!microphoneNoiseGateWorkletNodeRef.current) return;
@@ -537,6 +592,11 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
       const rawAudioTrack = rawStream.getAudioTracks()[0];
 
       if (rawAudioTrack) {
+        // Keep the untouched stream around for cleanup and for VAD analysis
+        // (the transmit track is silent while the input gate is closed).
+        rawMicrophoneStreamRef.current = rawStream;
+        setRawMicStream(rawStream);
+
         const shouldUseNoiseGate = !!devices.noiseGateEnabled;
         const noiseGateAvailability = getNoiseGateWorkletAvailabilitySnapshot();
         let transmitTrack: MediaStreamTrack = rawAudioTrack;
@@ -567,7 +627,6 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
             const processedTrack = destination.stream.getAudioTracks()[0];
 
             if (processedTrack) {
-              rawMicrophoneStreamRef.current = rawStream;
               microphoneNoiseGateAudioContextRef.current = audioContext;
               microphoneNoiseGateWorkletNodeRef.current = noiseGateNode;
               transmitTrack = processedTrack;
@@ -1098,6 +1157,151 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
     simulcastEnabled
   ]);
 
+  /**
+   * Swap what's being shared WITHOUT ending the share (REEF): re-run the
+   * display picker and replaceTrack on the existing producers. Same RTP
+   * stream, so viewers never re-consume and see no black gap. Cancelling the
+   * picker keeps the current source.
+   */
+  const switchScreenShareSource = useCallback(async () => {
+    const producer = localScreenShareProducer.current;
+
+    if (!producer || producer.closed) {
+      logVoice('No active screen share producer to switch');
+      return;
+    }
+
+    const canRestrictOwnAudio = getRestrictOwnAudioSupport();
+    const canSuppressLocalAudioPlayback =
+      getSuppressLocalAudioPlaybackSupport();
+
+    const displayMediaConstraints: MediaStreamConstraints = {
+      video: {
+        ...getResWidthHeight(devices?.screenResolution),
+        frameRate: devices?.screenFramerate
+      },
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+        channelCount: 2,
+        sampleRate: 48000,
+        // @ts-expect-error - experimental, not in types yet
+        suppressLocalAudioPlayback: canSuppressLocalAudioPlayback
+          ? (devices.suppressLocalAudioPlayback ?? false)
+          : undefined,
+        restrictOwnAudio: canRestrictOwnAudio
+          ? (devices.restrictOwnAudio ?? false)
+          : undefined
+      }
+    };
+
+    let stream: MediaStream;
+
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia(
+        displayMediaConstraints
+      );
+    } catch (error) {
+      logVoice('Switch source cancelled or failed, keeping current source', {
+        error
+      });
+      return;
+    }
+
+    const videoTrack = stream.getVideoTracks()[0];
+    const audioTrack = stream.getAudioTracks()[0];
+
+    if (!videoTrack) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+
+    videoTrack.contentHint =
+      devices.screenOptimize === ScreenOptimize.TEXT ? 'detail' : 'motion';
+
+    try {
+      await producer.replaceTrack({ track: videoTrack });
+    } catch (error) {
+      logVoice('replaceTrack failed, keeping current source', { error });
+      stream.getTracks().forEach((track) => track.stop());
+      throw error;
+    }
+
+    // Retire the old source: detach onended first so stop() can't trigger the
+    // end-of-share cleanup and tear down the share we just switched.
+    const oldStream = localScreenShareStream;
+
+    oldStream?.getTracks().forEach((track) => {
+      track.onended = null;
+      track.stop();
+    });
+
+    videoTrack.onended = () => {
+      logVoice('Screen share track ended, cleaning up screen share');
+
+      stream.getTracks().forEach((track) => track.stop());
+      localScreenShareProducer.current?.close();
+
+      setScreenShareProducer(null);
+      setLocalScreenShare(undefined);
+    };
+
+    const audioProducer = localScreenShareAudioProducer.current;
+
+    if (audioTrack) {
+      if (audioProducer && !audioProducer.closed) {
+        await audioProducer.replaceTrack({ track: audioTrack });
+      } else {
+        localScreenShareAudioProducer.current =
+          await producerTransport.current?.produce({
+            track: audioTrack,
+            codecOptions: {
+              opusStereo: true,
+              opusFec: true,
+              opusDtx: false,
+              opusMaxPlaybackRate: 48000,
+              opusMaxAverageBitrate: 128000
+            },
+            appData: { kind: StreamKind.SCREEN_AUDIO }
+          });
+      }
+
+      audioTrack.onended = () => {
+        localScreenShareAudioProducer.current?.close();
+        localScreenShareAudioProducer.current = undefined;
+      };
+    } else if (audioProducer && !audioProducer.closed) {
+      // New source has no audio: close ours and tell the server explicitly —
+      // unlike video, the SCREEN_AUDIO producer registers no '@close' handler,
+      // so without this viewers would keep a stale audio consumer.
+      audioProducer.close();
+      localScreenShareAudioProducer.current = undefined;
+
+      try {
+        await getVoiceTRPCClient().voice.closeProducer.mutate({
+          kind: StreamKind.SCREEN_AUDIO
+        });
+      } catch (error) {
+        logVoice('Error closing screen share audio producer', { error });
+      }
+    }
+
+    setLocalScreenShare(stream);
+  }, [
+    localScreenShareProducer,
+    localScreenShareAudioProducer,
+    producerTransport,
+    localScreenShareStream,
+    setLocalScreenShare,
+    setScreenShareProducer,
+    devices.screenResolution,
+    devices.screenFramerate,
+    devices.screenOptimize,
+    devices.restrictOwnAudio,
+    devices.suppressLocalAudioPlayback
+  ]);
+
   const cleanup = useCallback(() => {
     logVoice('Running voice provider cleanup');
 
@@ -1281,6 +1485,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
       setStreamQuality,
       isSimulcastConsumer,
       init,
+      switchScreenShareSource,
 
       toggleMic,
       toggleSound,
@@ -1308,6 +1513,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
       setStreamQuality,
       isSimulcastConsumer,
       init,
+      switchScreenShareSource,
 
       toggleMic,
       toggleSound,

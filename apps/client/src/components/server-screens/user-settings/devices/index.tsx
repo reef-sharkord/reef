@@ -57,6 +57,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useMicrophoneTest } from './hooks/use-microphone-test';
 import { useWebcamTest } from './hooks/use-webcam-test';
+import { InputModeSection } from './input-mode-section';
 import { MicrophoneTestLevelBar } from './microphone-test-level-bar';
 import ResolutionFpsControl from './resolution-fps-control';
 import { RestrictOwnAudioAlert } from './restrict-own-audio-alert';
@@ -397,6 +398,13 @@ const Devices = memo(() => {
               </p>
             )}
           </Group>
+
+          <InputModeSection
+            inputMode={values.inputMode}
+            pttKey={values.pttKey}
+            onInputModeChange={(mode) => onChange('inputMode', mode)}
+            onPttKeyChange={(key) => onChange('pttKey', key)}
+          />
 
           <Group label={t('microphoneTestLabel')}>
             <div className="flex items-center gap-2">

@@ -50,7 +50,8 @@ export enum LocalStorageKey {
   RAIL_CUSTOM = 'reef-rail-custom',
   // Appearance: accent color + text scale. Client-only. (M8)
   APPEARANCE = 'reef-appearance',
-  // Push-to-talk keybind (in-app). (M8)
+  // Superseded: input mode + PTT keybind live in DEVICES_SETTINGS
+  // (TDeviceSettings.inputMode/pttKey). Kept so the slug is never reused.
   PUSH_TO_TALK = 'reef-push-to-talk',
   // Per-host voice-chat sidebar state ({ open, channelId } keyed by host). Voice
   // channel ids are per-server, so this must not be shared globally. (M8)
