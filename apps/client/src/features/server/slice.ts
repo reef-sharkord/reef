@@ -1,5 +1,10 @@
 import type { TPinnedCard } from '@/components/channel-view/voice/hooks/use-pin-card-controller';
 import { getLocalStorageItemBool, LocalStorageKey } from '@/helpers/storage';
+import {
+  DEFAULT_REEF_FEATURES,
+  type TReefFeatures
+} from '@/lib/reef-features';
+import type { TPresenceMap } from '@/lib/reef-presence';
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type {
   TCategory,
@@ -62,6 +67,10 @@ export interface IServerState {
     [channelId: number]: number | undefined;
   };
   pluginsMetadata: TPluginMetadata[];
+  // which REEF features this server's reef plugin allows (per-server policy)
+  reefFeatures: TReefFeatures;
+  // custom status texts from this server's reef plugin (userId → presence)
+  presences: TPresenceMap;
   pluginCommands: TCommandsMapByPlugin;
   hideNonVideoParticipants: boolean;
   showUserBannersInVoice: boolean;
@@ -103,6 +112,8 @@ const initialState: IServerState = {
   channelPermissions: {},
   readStatesMap: {},
   pluginsMetadata: [],
+  reefFeatures: DEFAULT_REEF_FEATURES,
+  presences: {},
   pluginCommands: {},
   hideNonVideoParticipants: getLocalStorageItemBool(
     LocalStorageKey.HIDE_NON_VIDEO_PARTICIPANTS,
@@ -185,6 +196,12 @@ export const serverSlice = createSlice({
       state.channelPermissions = action.payload.channelPermissions;
       state.readStatesMap = action.payload.readStates;
       state.pluginsMetadata = action.payload.pluginsMetadata;
+    },
+    setReefFeatures: (state, action: PayloadAction<TReefFeatures>) => {
+      state.reefFeatures = action.payload;
+    },
+    setPresences: (state, action: PayloadAction<TPresenceMap>) => {
+      state.presences = action.payload;
     },
     addMessages: (
       state,

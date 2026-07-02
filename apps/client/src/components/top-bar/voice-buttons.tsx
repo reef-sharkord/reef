@@ -2,6 +2,7 @@ import { toggleVoiceChatSidebar } from '@/features/app/actions';
 import { useVoiceChatSidebar } from '@/features/app/hooks';
 import {
   useHasUnreadMentions,
+  useReefFeatures,
   useUnreadMessagesCount
 } from '@/features/server/hooks';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,7 @@ type TVoiceButtonsProps = {
 
 const VoiceButtons = memo(({ currentVoiceChannelId }: TVoiceButtonsProps) => {
   const { t } = useTranslation('topbar');
+  const reefFeatures = useReefFeatures();
   const { isOpen: isAnyVoiceChatOpen, channelId: openVoiceChatChannelId } =
     useVoiceChatSidebar();
 
@@ -42,7 +44,7 @@ const VoiceButtons = memo(({ currentVoiceChannelId }: TVoiceButtonsProps) => {
   return (
     <>
       <VoiceOptionsController />
-      <Soundboard />
+      {reefFeatures.soundboard && <Soundboard />}
       <VolumeController channelId={currentVoiceChannelId} />
       <Button
         variant="ghost"

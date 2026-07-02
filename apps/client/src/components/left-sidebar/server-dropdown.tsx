@@ -1,6 +1,7 @@
 import { openDialog, requestConfirmation } from '@/features/dialogs/actions';
 import { openServerScreen } from '@/features/server-screens/actions';
 import { disconnectFromServer } from '@/features/server/actions';
+import { useReefFeatures } from '@/features/server/hooks';
 import { Permission } from '@sharkord/shared';
 import {
   Button,
@@ -20,6 +21,7 @@ import { ServerScreen } from '../server-screens/screens';
 
 const ServerDropdownMenu = memo(() => {
   const { t } = useTranslation('sidebar');
+  const reefFeatures = useReefFeatures();
   const serverSettingsPermissions = useMemo(
     () => [
       Permission.MANAGE_SETTINGS,
@@ -68,6 +70,14 @@ const ServerDropdownMenu = memo(() => {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
         </Protect>
+        {reefFeatures.reports && (
+          <>
+            <DropdownMenuItem onClick={() => openDialog(Dialog.REEF_REPORT)}>
+              {t('reportBug')}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuItem
           onClick={handleDisconnectClick}
           className="text-destructive focus:text-destructive"

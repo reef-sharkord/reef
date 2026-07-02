@@ -58,6 +58,11 @@ export const activeFullscreenPluginIdSelector = (state: IRootState) =>
 
 export const dmsOpenSelector = (state: IRootState) => state.server.dmsOpen;
 
+export const reefFeaturesSelector = (state: IRootState) =>
+  state.server.reefFeatures;
+
+export const presencesSelector = (state: IRootState) => state.server.presences;
+
 export const ownUserRolesSelector = createSelector(
   [ownUserSelector, rolesSelector],
   (ownUser, roles) => {

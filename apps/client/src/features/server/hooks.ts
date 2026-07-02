@@ -21,6 +21,7 @@ import {
   ownVoiceUserSelector,
   pluginsEnabledSelector,
   publicServerSettingsSelector,
+  reefFeaturesSelector,
   serverNameSelector,
   typingUsersByChannelIdSelector,
   typingUsersByThreadIdSelector,
@@ -50,6 +51,13 @@ export const useInfo = () => useSelector(infoSelector);
 export const useIsOwnUserOwner = () => useSelector(isOwnUserOwnerSelector);
 
 export const usePluginsEnabled = () => useSelector(pluginsEnabledSelector);
+
+export const useReefFeatures = () => useSelector(reefFeaturesSelector);
+
+export const usePresenceText = (userId: number) =>
+  useSelector(
+    (state: IRootState) => state.server.presences[userId]?.text ?? ''
+  );
 
 export const useCan = () => {
   const ownUserRoles = useOwnUserRoles();

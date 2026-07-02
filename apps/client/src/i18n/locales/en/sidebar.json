@@ -114,5 +114,12 @@
   "screenSharePickerScreens": "Screens",
   "screenSharePickerWindows": "Windows",
   "screenSharePickerShareAudio": "Share audio",
-  "screenSharePickerCancel": "Cancel"
+  "screenSharePickerCancel": "Cancel",
+
+  "reportBug": "Report a bug / request a feature",
+
+  "setStatus": "Set custom status",
+  "setStatusTitle": "Set your status",
+  "setStatusMsg": "Shown to others on this server. Leave empty to clear it.",
+  "setStatusConfirm": "Set status"
 }

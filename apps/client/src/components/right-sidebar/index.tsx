@@ -1,5 +1,6 @@
 import { ResizableSidebar } from '@/components/resizable-sidebar';
 import { UserAvatar } from '@/components/user-avatar';
+import { usePresenceText } from '@/features/server/hooks';
 import { useUsers } from '@/features/server/users/hooks';
 import { LocalStorageKey } from '@/helpers/storage';
 import { cn } from '@/lib/utils';
@@ -20,18 +21,28 @@ type TUserProps = {
 };
 
 const User = memo(({ userId, name, banned }: TUserProps) => {
+  // custom status from the server's reef plugin; empty when unset/unsupported
+  const statusText = usePresenceText(userId);
+
   return (
     <UserPopover userId={userId}>
       <div className="flex items-center gap-3 rounded px-2 py-1.5 hover:bg-accent select-none min-w-0">
         <UserAvatar userId={userId} className="h-8 w-8 shrink-0" />
-        <span
-          className={cn(
-            'text-sm text-foreground truncate',
-            banned && 'line-through text-muted-foreground'
+        <div className="flex min-w-0 flex-col">
+          <span
+            className={cn(
+              'text-sm text-foreground truncate',
+              banned && 'line-through text-muted-foreground'
+            )}
+          >
+            {name}
+          </span>
+          {statusText && (
+            <span className="text-xs text-muted-foreground truncate">
+              {statusText}
+            </span>
           )}
-        >
-          {name}
-        </span>
+        </div>
       </div>
     </UserPopover>
   );

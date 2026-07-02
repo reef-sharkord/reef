@@ -9,7 +9,8 @@ import { useChannelById } from '@/features/server/channels/hooks';
 import {
   useCan,
   useChannelCan,
-  usePublicServerSettings
+  usePublicServerSettings,
+  useReefFeatures
 } from '@/features/server/hooks';
 import { useFlatPluginCommands } from '@/features/server/plugins/hooks';
 import { useUploadFiles } from '@/hooks/use-upload-files';
@@ -96,6 +97,7 @@ const MessageCompose = memo(
     const channelCan = useChannelCan(channelId);
     const channel = useChannelById(channelId);
     const publicSettings = usePublicServerSettings();
+    const reefFeatures = useReefFeatures();
     const allPluginCommands = useFlatPluginCommands();
     const replyAuthorName = useMessageAuthorName({
       userId: replyTarget?.userId ?? 0,
@@ -329,10 +331,12 @@ const MessageCompose = memo(
                 <Smile className="h-4 w-4" />
               </Button>
             </EmojiPicker>
-            <GifPicker
-              channelId={channelId}
-              disabled={uploading || !canSendMessages}
-            />
+            {reefFeatures.gifs && (
+              <GifPicker
+                channelId={channelId}
+                disabled={uploading || !canSendMessages}
+              />
+            )}
             <Button
               size="icon"
               variant="ghost"

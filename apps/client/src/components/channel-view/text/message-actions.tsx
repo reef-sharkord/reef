@@ -9,6 +9,7 @@ import { openThreadSidebar } from '@/features/app/actions';
 import { useIsShiftHeld } from '@/features/app/hooks';
 import { requestConfirmation } from '@/features/dialogs/actions';
 import { channelByIdSelector } from '@/features/server/channels/selectors';
+import { useReefFeatures } from '@/features/server/hooks';
 import { messagesMapSelector } from '@/features/server/messages/selectors';
 import { getActiveStore } from '@/features/store';
 import { getActiveHost } from '@/lib/connections';
@@ -70,6 +71,7 @@ const MessageActions = memo(
     );
 
     const isShiftHeld = useIsShiftHeld();
+    const reefFeatures = useReefFeatures();
 
     const [saved, setSaved] = useState(() => {
       const host = getActiveHost();
@@ -181,14 +183,16 @@ const MessageActions = memo(
             title={t('replyInThread')}
           />
         )}
-        <IconButton
-          size="sm"
-          variant="ghost"
-          icon={saved ? BookmarkCheck : Bookmark}
-          className={saved ? 'text-primary' : ''}
-          onClick={onSaveClick}
-          title={saved ? t('unsaveMessage') : t('saveMessage')}
-        />
+        {reefFeatures.savedMessages && (
+          <IconButton
+            size="sm"
+            variant="ghost"
+            icon={saved ? BookmarkCheck : Bookmark}
+            className={saved ? 'text-primary' : ''}
+            onClick={onSaveClick}
+            title={saved ? t('unsaveMessage') : t('saveMessage')}
+          />
+        )}
         {canManage && (
           <>
             <IconButton

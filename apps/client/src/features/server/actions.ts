@@ -14,6 +14,12 @@ import {
   setActiveHost,
   setConnectionMeta
 } from '@/lib/connections';
+import { fetchReefFeatures } from '@/lib/reef-features';
+import {
+  fetchPresences,
+  PRESENCE_POLL_MS,
+  setOwnPresence
+} from '@/lib/reef-presence';
 import {
   getSavedServers,
   removeSavedServer,
@@ -42,6 +48,22 @@ import { type TDisconnectInfo } from './types';
 
 export const setConnected = (status: boolean) => {
   store.dispatch(serverSliceActions.setConnected(status));
+};
+
+/**
+ * Set (or clear, with empty text) your custom status on the ACTIVE server,
+ * then refresh the presence map so the change shows immediately instead of
+ * waiting for the next poll. (REEF)
+ */
+export const updateOwnPresence = async (text: string): Promise<boolean> => {
+  const ok = await setOwnPresence(text);
+
+  if (ok) {
+    const presences = await fetchPresences(getTRPCClient());
+    store.dispatch(serverSliceActions.setPresences(presences));
+  }
+
+  return ok;
 };
 
 export const resetServerState = () => {
@@ -161,6 +183,51 @@ export const joinServer = async (
 
   runWithActiveStore(targetStore, () => {
     setPluginComponents(components);
+  });
+
+  // Ask this server's reef plugin which REEF features it allows here
+  // (fire-and-forget: the defaults apply until the answer lands, and the
+  // dispatch is bound to THIS server's store like everything else above).
+  void fetchReefFeatures(trpc, data.pluginsMetadata).then((features) => {
+    runWithActiveStore(targetStore, () => {
+      store.dispatch(serverSliceActions.setReefFeatures(features));
+    });
+
+    if (!features.presence) {
+      return;
+    }
+
+    // Presence transport is a slow poll (plugins can't push to clients).
+    // The interval's teardown is chained onto this connection's subscription
+    // teardown so closing the server also stops its poll. Guard against the
+    // connection having closed while the features fetch was in flight.
+    const boundHost = targetHost ?? getActiveHost();
+    const liveConnection = boundHost ? getConnection(boundHost) : undefined;
+
+    if (!liveConnection) {
+      return;
+    }
+
+    const refreshPresences = async () => {
+      const presences = await fetchPresences(trpc);
+
+      runWithActiveStore(targetStore, () => {
+        store.dispatch(serverSliceActions.setPresences(presences));
+      });
+    };
+
+    void refreshPresences();
+
+    const presenceInterval = setInterval(() => {
+      void refreshPresences();
+    }, PRESENCE_POLL_MS);
+
+    const previousUnsub = liveConnection.subscriptionUnsub;
+
+    liveConnection.subscriptionUnsub = () => {
+      clearInterval(presenceInterval);
+      previousUnsub();
+    };
   });
 
   return {

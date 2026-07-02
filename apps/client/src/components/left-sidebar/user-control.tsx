@@ -1,12 +1,26 @@
+import { requestTextInput } from '@/features/dialogs/actions';
 import { openServerScreen } from '@/features/server-screens/actions';
+import { updateOwnPresence } from '@/features/server/actions';
 import { useCurrentVoiceChannelId } from '@/features/server/channels/hooks';
-import { useChannelCan } from '@/features/server/hooks';
+import {
+  useChannelCan,
+  usePresenceText,
+  useReefFeatures
+} from '@/features/server/hooks';
 import { useOwnPublicUser } from '@/features/server/users/hooks';
 import { useVoice } from '@/features/server/voice/hooks';
+import { PRESENCE_TEXT_MAX } from '@/lib/reef-presence';
 import { cn } from '@/lib/utils';
 import { ChannelPermission } from '@sharkord/shared';
 import { Button } from '@sharkord/ui';
-import { HeadphoneOff, Headphones, Mic, MicOff, Settings } from 'lucide-react';
+import {
+  HeadphoneOff,
+  Headphones,
+  Mic,
+  MicOff,
+  Settings,
+  Smile
+} from 'lucide-react';
 import { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ServerScreen } from '../server-screens/screens';
@@ -19,10 +33,26 @@ const UserControl = memo(() => {
   const currentVoiceChannelId = useCurrentVoiceChannelId();
   const { ownVoiceState, toggleMic, toggleSound } = useVoice();
   const channelCan = useChannelCan(currentVoiceChannelId);
+  const reefFeatures = useReefFeatures();
+  const ownStatusText = usePresenceText(ownPublicUser?.id ?? -1);
 
   const handleSettingsClick = useCallback(() => {
     openServerScreen(ServerScreen.USER_SETTINGS);
   }, []);
+
+  const handleStatusClick = useCallback(async () => {
+    const text = await requestTextInput({
+      title: t('setStatusTitle'),
+      message: t('setStatusMsg'),
+      confirmLabel: t('setStatusConfirm'),
+      allowEmpty: true
+    });
+
+    // null = cancelled; undefined/'' = clear the status
+    if (text === null) return;
+
+    await updateOwnPresence((text ?? '').slice(0, PRESENCE_TEXT_MAX));
+  }, [t]);
 
   if (!ownPublicUser) return null;
 
@@ -40,8 +70,13 @@ const UserControl = memo(() => {
               {ownPublicUser.name}
             </span>
             <div className="flex items-center space-x-1">
-              <span className="text-xs text-muted-foreground capitalize">
-                {ownPublicUser.status}
+              <span
+                className={cn(
+                  'text-xs text-muted-foreground truncate',
+                  !ownStatusText && 'capitalize'
+                )}
+              >
+                {ownStatusText || ownPublicUser.status}
               </span>
             </div>
           </div>
@@ -49,6 +84,18 @@ const UserControl = memo(() => {
       </UserPopover>
 
       <div className="flex items-center space-x-0.5">
+        {reefFeatures.presence && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            onClick={handleStatusClick}
+            title={t('setStatus')}
+          >
+            <Smile className="h-4 w-4" />
+          </Button>
+        )}
+
         <Button
           variant="ghost"
           size="icon"

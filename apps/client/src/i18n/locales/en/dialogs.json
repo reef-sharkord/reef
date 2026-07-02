@@ -127,5 +127,20 @@
   "pluginInstallUseDocker": "We strongly recommend running Sharkord in a Docker container for isolation and reduced risk.",
   "pluginInstallDocsNote": "For more details, read the docs at:",
   "pluginInstallConfirmBtn": "Install Plugin",
-  "pluginInstallConfirmCountdown": "Wait ({{seconds}}s)"
+  "pluginInstallConfirmCountdown": "Wait ({{seconds}}s)",
+
+  "reportTitle": "Report a bug or request a feature",
+  "reportKindBug": "Bug report",
+  "reportKindFeature": "Feature request",
+  "reportTitleLabel": "Title",
+  "reportTitlePlaceholderBug": "What went wrong, in one line",
+  "reportTitlePlaceholderFeature": "What you'd like to see, in one line",
+  "reportDescriptionLabel": "Details",
+  "reportDescriptionPlaceholderBug": "What did you do, what did you expect, and what happened instead?",
+  "reportDescriptionPlaceholderFeature": "Describe the feature and why it would help.",
+  "reportSubmitBtn": "Send report",
+  "reportSentToast": "Report sent — thank you!",
+  "reportEmptyError": "Please fill in a title and details.",
+  "reportCooldownError": "Please wait a minute between reports.",
+  "reportFailedError": "Could not send the report. Try again later."
 }
