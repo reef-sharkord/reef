@@ -1,6 +1,9 @@
 /node_modules
-# Live test-server state: DB (owner token, password hashes), uploads, config.
-/test-server/data
+# Local-only dev/ops tooling — the public repo is product only.
+/test-server
+/push
+/apps/server/build/build-linux.ts
+/.dockerignore
 # Internal working documents — never publish (kept locally only).
 /CLAUDE.md
 /UNCORD_PLAN.md
