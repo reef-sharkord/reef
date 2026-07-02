@@ -1,6 +1,6 @@
 {
-  "name": "uncord-desktop",
-  "version": "0.0.1",
+  "name": "reef-desktop",
+  "version": "0.1.0",
   "private": true,
   "description": "REEF desktop shell (auto-updating Electron app)",
   "author": "REEF",

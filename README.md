@@ -34,13 +34,21 @@ REEF is a fork of [Sharkord](https://github.com/Sharkord/sharkord) focused on th
 **For server admins: the REEF companion plugin**
 A single plugin (`plugins/reef`) with an **admin switchboard** — every REEF feature above that touches the server has its own on/off toggle in Settings → Plugins. Runs on a stock Sharkord server; harmless to clients that don't use it. See [plugins/reef/README.md](plugins/reef/README.md).
 
+## Download
+
+Grab the latest from the [Releases](https://github.com/reef-sharkord/reef/releases) page:
+
+- **Windows desktop** — `REEF-Setup-<version>.exe` (auto-updates) or the portable exe. Builds are unsigned, so SmartScreen will warn on first run: **More info → Run anyway**.
+- **Android (⚠️ work in progress)** — `REEF-Android-<version>-WIP.apk`. A debug-signed preview build: expect rough edges, battery-hungry background behavior, and missing features. Install by opening the APK on the phone (allow "install from unknown sources").
+- **Server admins** — `reef-plugin-<version>.zip`: unzip into your Sharkord server's `plugins/reef` and enable it in Settings → Plugins. The server itself is stock [Sharkord](https://github.com/Sharkord/sharkord/releases).
+
 ## Apps
 
 | App | Status |
 | --- | --- |
 | Web client (`apps/client`) | ✅ the core of REEF |
 | Desktop (`desktop/`, Electron) | ✅ auto-updating shell with global PTT, tray, unread badges, in-app screen picker |
-| Mobile (`mobile/`, Capacitor) | 🧪 experimental Android shell |
+| Mobile (`mobile/`, Capacitor) | ⚠️ **work in progress** — installable Android preview, expect rough edges |
 | Server (`apps/server`) | tracks upstream Sharkord — REEF deliberately does not fork server internals |
 
 ## Development

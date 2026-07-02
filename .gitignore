@@ -15,3 +15,6 @@
 /DockerCenas
 /experiments
 .direnv/
+
+# Local release staging (assets uploaded to GitHub Releases)
+/release-assets
