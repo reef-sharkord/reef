@@ -223,10 +223,14 @@ body {
 #portal {
   display: none;
   position: fixed;
-  top: 0;
+  /* On the desktop shell the custom titlebar (an OS drag region — it eats
+     clicks from anything rendered over it) owns the top strip; the Titlebar
+     component sets --reef-titlebar-height so full-screen overlays start
+     below it and keep the window controls reachable. 0 in the browser. */
+  top: var(--reef-titlebar-height, 0px);
   left: 0;
   width: 100%;
-  height: 100%;
+  height: calc(100% - var(--reef-titlebar-height, 0px));
   z-index: 10;
 }
 

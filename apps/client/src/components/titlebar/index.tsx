@@ -18,6 +18,18 @@ const Titlebar = memo(() => {
 
     void api.isWindowMaximized().then(setMaximized);
     api.onMaximizeChange(setMaximized);
+
+    // Tell full-screen overlays (#portal) how much top space the drag region
+    // occupies, so they render below it instead of under it (clicks on a drag
+    // region start a window drag — they never reach the overlay).
+    document.documentElement.style.setProperty(
+      '--reef-titlebar-height',
+      '2rem'
+    );
+
+    return () => {
+      document.documentElement.style.removeProperty('--reef-titlebar-height');
+    };
   }, [api]);
 
   if (!isDesktop()) {
