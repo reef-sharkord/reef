@@ -6,6 +6,11 @@ directories:
   output: release
   buildResources: build
 
+# Don't node-gyp-rebuild native deps: uiohook-napi ships N-API prebuilds
+# (ABI-stable, they load fine under Electron), and this machine has no C++
+# toolchain. node-gyp-build picks the right prebuild at runtime.
+npmRebuild: false
+
 # What gets packed into the app. The compiled Electron entrypoints plus the
 # built client (renderer/) produced by `npm run build:renderer`.
 files:
@@ -13,14 +18,14 @@ files:
   - renderer/**/*
   - package.json
 
-# Auto-update feed. electron-updater reads `latest.yml` + the installer from this
-# URL. Point it at any static host you control (S3 bucket, nginx, GitHub release
-# assets, etc.) and upload what `npm run dist` produces in release/. Replace the
-# placeholder before publishing.
+# Auto-update feed: GitHub Releases on the public repo. electron-updater reads
+# the latest release's assets (installer + latest.yml) — no token needed at
+# runtime on a public repo. Publishing needs GH_TOKEN: `npm run publish`, or
+# upload the release/ artifacts to a GitHub release manually.
 publish:
-  provider: generic
-  url: https://REPLACE_ME.example.com/reef/desktop/
-  channel: latest
+  provider: github
+  owner: reef-sharkord
+  repo: reef
 
 win:
   target:

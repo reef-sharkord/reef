@@ -30,11 +30,11 @@ const BADGE_UNREAD_PNG =
  * server through the rail). The only desktop-specific responsibilities are
  * window management and auto-update.
  *
- * Auto-update (Discord-style): electron-updater checks the generic feed
- * configured in electron-builder.yml (`publish.url`) on launch, downloads new
+ * Auto-update (Discord-style): electron-updater checks the GitHub Releases
+ * feed configured in electron-builder.yml (`publish`) on launch, downloads new
  * builds in the background, and installs them on quit. Publish a new version by
- * bumping `version` and running `npm run publish` (uploads the installer +
- * latest.yml to that URL).
+ * bumping `version` and running `npm run publish` with GH_TOKEN set (creates a
+ * GitHub release with the installer + latest.yml).
  */
 
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173';
