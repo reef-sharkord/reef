@@ -1,3 +1,4 @@
+import { isDesktop } from '@/helpers/desktop';
 import { Info } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +16,19 @@ const RestrictOwnAudioAlert = memo(
 
     if (isSupported) {
       return null;
+    }
+
+    // The desktop app isn't "a browser missing a feature": its system-audio
+    // capture is loopback (everything the PC plays), so own-audio exclusion
+    // doesn't apply. Say what actually happens and what to do about it,
+    // instead of pointing at a browser-compatibility table.
+    if (isDesktop()) {
+      return (
+        <div className="flex items-start gap-2 rounded-md border border-border/50 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <p>{t('restrictOwnAudioDesktopNote')}</p>
+        </div>
+      );
     }
 
     return (

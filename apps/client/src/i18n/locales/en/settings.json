@@ -160,6 +160,7 @@
   "restrictOwnAudioLabel": "Restrict Own Audio",
   "restrictOwnAudioDesc": "Exclude Sharkord audio from the audio captured during screen sharing.",
   "restrictOwnAudioUnsupported": "Your browser does not support restricting your own audio during screen sharing. Sharkord audio may be captured in the shared stream, which can cause echo or feedback.",
+  "restrictOwnAudioDesktopNote": "When you share with system audio, the desktop app captures everything your PC plays — including REEF's own call audio, so viewers may hear themselves echo. If that happens, share without system audio.",
   "restrictOwnAudioCompatibilityLink": "Check browser compatibility.",
   "suppressLocalAudioPlaybackLabel": "Suppress Local Audio Playback",
   "suppressLocalAudioPlaybackDesc": "When sharing audio from a tab or application, prevent it from also playing through your own playback device.",
