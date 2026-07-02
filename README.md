@@ -55,7 +55,7 @@ cd apps/server && bun dev
 cd apps/client && bun dev
 ```
 
-`bun run magic` runs the full format + typecheck + lint gate. See [CLAUDE.md](CLAUDE.md) / [DEVELOPMENT.md](DEVELOPMENT.md) for the full tour, and `test-server/` for a Dockerized production-like server with a headless smoke test.
+`bun run magic` runs the full format + typecheck + lint gate. See [DEVELOPMENT.md](DEVELOPMENT.md) for more.
 
 ## License
 
