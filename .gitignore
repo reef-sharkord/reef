@@ -1,6 +1,11 @@
 /node_modules
 # Live test-server state: DB (owner token, password hashes), uploads, config.
 /test-server/data
+# Internal working documents — never publish (kept locally only).
+/CLAUDE.md
+/UNCORD_PLAN.md
+/NATIVE_SHELLS.md
+/docs/superpowers
 /.github/copilot-instructions.md
 /cenas.txt
 /cenas.md
