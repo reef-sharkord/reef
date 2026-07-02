@@ -106,7 +106,9 @@ const InputModeSection = memo(
               {isDesktop() && (
                 <Alert variant="default">
                   <Info />
-                  <AlertDescription>{t('pttGlobalDisclaimer')}</AlertDescription>
+                  <AlertDescription>
+                    {t('pttGlobalDisclaimer')}
+                  </AlertDescription>
                 </Alert>
               )}
             </>

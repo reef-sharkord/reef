@@ -1,9 +1,6 @@
 import type { TPinnedCard } from '@/components/channel-view/voice/hooks/use-pin-card-controller';
 import { getLocalStorageItemBool, LocalStorageKey } from '@/helpers/storage';
-import {
-  DEFAULT_REEF_FEATURES,
-  type TReefFeatures
-} from '@/lib/reef-features';
+import { DEFAULT_REEF_FEATURES, type TReefFeatures } from '@/lib/reef-features';
 import type { TPresenceMap } from '@/lib/reef-presence';
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type {

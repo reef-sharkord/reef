@@ -84,12 +84,12 @@ import {
 import { useLocalStreams } from './hooks/use-local-streams';
 import { usePtt } from './hooks/use-ptt';
 import { useRemoteStreams } from './hooks/use-remote-streams';
-import { useVad } from './hooks/use-vad';
 import {
   useTransportStats,
   type TransportStatsData
 } from './hooks/use-transport-stats';
 import { useTransports } from './hooks/use-transports';
+import { useVad } from './hooks/use-vad';
 import { useVoiceControls } from './hooks/use-voice-controls';
 import { useVoiceEvents } from './hooks/use-voice-events';
 import { SIMULCAST_WEBCAM_MAX_BITRATE } from './statics';
