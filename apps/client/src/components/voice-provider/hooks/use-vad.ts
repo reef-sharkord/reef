@@ -1,3 +1,8 @@
+import {
+  DEFAULT_VAD_THRESHOLD_DB,
+  VAD_THRESHOLD_MAX_DB,
+  VAD_THRESHOLD_MIN_DB
+} from '@/types';
 import { useEffect, useRef } from 'react';
 
 const VAD_FFT_SIZE = 512;
@@ -8,16 +13,14 @@ const VAD_HOLD_MS = 400;
 const ANALYSER_MIN_DB = -90;
 const ANALYSER_MAX_DB = -10;
 
-// Fixed detection threshold: -45 dB activates on normal speech while ignoring
-// ambient noise and keyboard sounds.
-const VAD_THRESHOLD_DB = -45;
-
 type TUseVadParams = {
   enabled: boolean;
   // The RAW microphone stream, never the transmit stream: a gated (disabled)
   // transmit track produces silence, so analysing it could never re-open the
   // gate.
   rawStream: MediaStream | null;
+  // User-set sensitivity (dB the mic must exceed). Lower = more sensitive.
+  thresholdDb?: number;
   onSpeakingChange: (speaking: boolean) => void;
 };
 
@@ -28,7 +31,12 @@ type TUseVadParams = {
  * itself — the voice provider owns track state and combines this with
  * mute/input mode.
  */
-const useVad = ({ enabled, rawStream, onSpeakingChange }: TUseVadParams) => {
+const useVad = ({
+  enabled,
+  rawStream,
+  thresholdDb = DEFAULT_VAD_THRESHOLD_DB,
+  onSpeakingChange
+}: TUseVadParams) => {
   const onSpeakingChangeRef = useRef(onSpeakingChange);
 
   useEffect(() => {
@@ -68,8 +76,12 @@ const useVad = ({ enabled, rawStream, onSpeakingChange }: TUseVadParams) => {
     silentGain.connect(audioContext.destination);
 
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    const clampedThresholdDb = Math.min(
+      VAD_THRESHOLD_MAX_DB,
+      Math.max(VAD_THRESHOLD_MIN_DB, thresholdDb)
+    );
     const thresholdByte =
-      ((VAD_THRESHOLD_DB - ANALYSER_MIN_DB) /
+      ((clampedThresholdDb - ANALYSER_MIN_DB) /
         (ANALYSER_MAX_DB - ANALYSER_MIN_DB)) *
       255;
 
@@ -116,7 +128,7 @@ const useVad = ({ enabled, rawStream, onSpeakingChange }: TUseVadParams) => {
       analysisTrack.stop();
       onSpeakingChangeRef.current(false);
     };
-  }, [enabled, rawStream]);
+  }, [enabled, rawStream, thresholdDb]);
 };
 
 export { useVad };

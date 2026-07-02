@@ -60,6 +60,13 @@ export enum InputMode {
 // KeyboardEvent.code of the default push-to-talk key.
 export const DEFAULT_PTT_KEY = 'Backquote';
 
+// Voice-activation sensitivity (dB threshold the mic must exceed to open the
+// gate). Lower = more sensitive. -45 activates on normal speech while
+// ignoring ambient noise and keyboard sounds.
+export const DEFAULT_VAD_THRESHOLD_DB = -45;
+export const VAD_THRESHOLD_MIN_DB = -80;
+export const VAD_THRESHOLD_MAX_DB = -20;
+
 // Screen-share optimization target. Maps to the video track's contentHint and
 // the encoder's degradation preference: TEXT keeps resolution sharp (good for
 // docs/code, may drop framerate), MOTION keeps framerate smooth (good for
@@ -82,6 +89,7 @@ export type TDeviceSettings = {
   noiseGateThresholdDb: number;
   inputMode: InputMode;
   pttKey: string;
+  vadThresholdDb: number;
   shareSystemAudio: boolean;
   restrictOwnAudio: boolean;
   suppressLocalAudioPlayback: boolean;

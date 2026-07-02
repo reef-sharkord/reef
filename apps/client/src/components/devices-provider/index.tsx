@@ -7,10 +7,13 @@ import {
 } from '@/helpers/storage';
 import {
   DEFAULT_PTT_KEY,
+  DEFAULT_VAD_THRESHOLD_DB,
   InputMode,
   NoiseSuppression,
   Resolution,
   ScreenOptimize,
+  VAD_THRESHOLD_MAX_DB,
+  VAD_THRESHOLD_MIN_DB,
   VideoCodec,
   type TDeviceSettings
 } from '@/types';
@@ -38,6 +41,7 @@ const getDefaultDeviceSettings = (): TDeviceSettings => ({
   noiseGateThresholdDb: MICROPHONE_GATE_DEFAULT_THRESHOLD_DB,
   inputMode: InputMode.NORMAL,
   pttKey: DEFAULT_PTT_KEY,
+  vadThresholdDb: DEFAULT_VAD_THRESHOLD_DB,
   shareSystemAudio: true,
   restrictOwnAudio: getRestrictOwnAudioSupport(),
   suppressLocalAudioPlayback: false,
@@ -245,13 +249,22 @@ const DevicesProvider = memo(({ children }: TDevicesProviderProps) => {
             ? savedSettings.pttKey
             : DEFAULT_PTT_KEY;
 
+        const vadThresholdDb =
+          typeof savedSettings.vadThresholdDb === 'number'
+            ? Math.min(
+                VAD_THRESHOLD_MAX_DB,
+                Math.max(VAD_THRESHOLD_MIN_DB, savedSettings.vadThresholdDb)
+              )
+            : DEFAULT_VAD_THRESHOLD_DB;
+
         base = {
           ...defaultDeviceSettings,
           ...savedSettings,
           noiseSuppression,
           restrictOwnAudio,
           inputMode,
-          pttKey
+          pttKey,
+          vadThresholdDb
         };
       } else {
         base = defaultDeviceSettings;

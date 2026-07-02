@@ -528,6 +528,7 @@ const VoiceProvider = memo(({ children }: TVoiceProviderProps) => {
   useVad({
     enabled: devices.inputMode === InputMode.VAD,
     rawStream: devices.inputMode === InputMode.VAD ? rawMicStream : null,
+    thresholdDb: devices.vadThresholdDb,
     onSpeakingChange: handleVadSpeakingChange
   });
 

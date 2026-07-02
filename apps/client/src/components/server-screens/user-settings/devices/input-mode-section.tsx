@@ -1,7 +1,7 @@
 import { isDesktop } from '@/helpers/desktop';
 import { cn } from '@/lib/utils';
-import { InputMode } from '@/types';
-import { Alert, AlertDescription, Button, Group } from '@sharkord/ui';
+import { InputMode, VAD_THRESHOLD_MAX_DB, VAD_THRESHOLD_MIN_DB } from '@/types';
+import { Alert, AlertDescription, Button, Group, Slider } from '@sharkord/ui';
 import { Info, Keyboard } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,16 +20,20 @@ const formatPttKey = (code: string): string => {
 type TInputModeSectionProps = {
   inputMode: InputMode;
   pttKey: string;
+  vadThresholdDb: number;
   onInputModeChange: (mode: InputMode) => void;
   onPttKeyChange: (key: string) => void;
+  onVadThresholdChange: (thresholdDb: number) => void;
 };
 
 const InputModeSection = memo(
   ({
     inputMode,
     pttKey,
+    vadThresholdDb,
     onInputModeChange,
-    onPttKeyChange
+    onPttKeyChange,
+    onVadThresholdChange
   }: TInputModeSectionProps) => {
     const { t } = useTranslation('settings');
     const [isCapturing, setIsCapturing] = useState(false);
@@ -115,7 +119,26 @@ const InputModeSection = memo(
           )}
 
           {inputMode === InputMode.VAD && (
-            <p className="text-xs text-muted-foreground">{t('vadHint')}</p>
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-muted-foreground">{t('vadHint')}</p>
+              <div className="flex items-center gap-3">
+                <span className="text-sm">{t('vadSensitivityLabel')}</span>
+                <Slider
+                  className="w-40 cursor-pointer"
+                  min={VAD_THRESHOLD_MIN_DB}
+                  max={VAD_THRESHOLD_MAX_DB}
+                  step={1}
+                  value={[vadThresholdDb]}
+                  onValueChange={([value]) => onVadThresholdChange(value)}
+                />
+                <span className="text-xs text-muted-foreground w-14">
+                  {vadThresholdDb} dB
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {t('vadSensitivityHint')}
+              </p>
+            </div>
           )}
         </div>
       </Group>

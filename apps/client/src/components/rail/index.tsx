@@ -1,13 +1,11 @@
 import { AddServerForm } from '@/components/add-server-form';
 import { Inbox } from '@/components/inbox';
 import { RailCustomizeDialog } from '@/components/rail/customize-dialog';
-import { SavedMessages } from '@/components/saved-messages';
 import { removeServer } from '@/features/server/actions';
 import { useRailServers } from '@/hooks/use-connections';
 import { useInbox } from '@/hooks/use-inbox';
 import { setActiveHost, type RailServer } from '@/lib/connections';
 import { isServerMuted, setServerMuted } from '@/lib/notification-prefs';
-import { openQuickSwitch } from '@/lib/quick-switch';
 import {
   getAllRailCustom,
   getRailOrder,
@@ -28,8 +26,6 @@ import {
   ArrowUp,
   Bell,
   BellOff,
-  Bookmark,
-  Command,
   Inbox as InboxIcon,
   LogOut,
   Palette,
@@ -178,7 +174,6 @@ const Rail = memo(({ className }: { className?: string }) => {
   const inbox = useInbox();
   const [adding, setAdding] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
-  const [savedOpen, setSavedOpen] = useState(false);
   const [order, setOrder] = useState<string[]>(() => getRailOrder());
   const [customMap, setCustomMap] = useState<Record<string, RailCustom>>(() =>
     getAllRailCustom()
@@ -255,22 +250,6 @@ const Rail = memo(({ className }: { className?: string }) => {
           </span>
         )}
       </button>
-      <button
-        type="button"
-        onClick={() => setSavedOpen(true)}
-        title={t('railSaved')}
-        className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground transition-all hover:rounded-xl hover:text-foreground"
-      >
-        <Bookmark className="h-5 w-5" />
-      </button>
-      <button
-        type="button"
-        onClick={() => openQuickSwitch()}
-        title={t('railQuickSwitch')}
-        className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground transition-all hover:rounded-xl hover:text-foreground"
-      >
-        <Command className="h-5 w-5" />
-      </button>
       <div className="my-1 h-px w-8 shrink-0 bg-border" />
 
       {ordered.map((server, i) => (
@@ -300,8 +279,6 @@ const Rail = memo(({ className }: { className?: string }) => {
       {adding && <AddServerForm onClose={() => setAdding(false)} />}
 
       {inboxOpen && <Inbox onClose={() => setInboxOpen(false)} />}
-
-      {savedOpen && <SavedMessages onClose={() => setSavedOpen(false)} />}
 
       {customizing && (
         <RailCustomizeDialog

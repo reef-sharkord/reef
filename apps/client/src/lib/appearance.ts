@@ -14,6 +14,10 @@ import {
 export type Appearance = {
   accent?: string; // CSS color; undefined = theme default
   textScale?: number; // percent, 100 = default
+  // Top-bar button visibility; absent = shown. The features stay reachable
+  // (Ctrl/Cmd+P for the quick switcher) when their buttons are hidden.
+  showSavedMessages?: boolean;
+  showQuickSwitch?: boolean;
 };
 
 export const ACCENT_PRESETS: { name: string; value: string }[] = [
@@ -66,6 +70,20 @@ const applyAppearance = (): void => {
   }
 };
 
+// Components that render from these prefs (the top bar) subscribe here so a
+// toggle in settings applies immediately, without a reload.
+const listeners = new Set<() => void>();
+
+const subscribeAppearance = (listener: () => void): (() => void) => {
+  listeners.add(listener);
+
+  return () => listeners.delete(listener);
+};
+
+/** Stable snapshot for useSyncExternalStore: the raw stored string. */
+const getAppearanceRaw = (): string =>
+  getLocalStorageItem(LocalStorageKey.APPEARANCE) ?? '';
+
 const setAppearance = (patch: Appearance): void => {
   const next = { ...read(), ...patch };
 
@@ -78,8 +96,23 @@ const setAppearance = (patch: Appearance): void => {
     delete next.textScale;
   }
 
+  if (next.showSavedMessages !== false) {
+    delete next.showSavedMessages;
+  }
+
+  if (next.showQuickSwitch !== false) {
+    delete next.showQuickSwitch;
+  }
+
   setLocalStorageItem(LocalStorageKey.APPEARANCE, JSON.stringify(next));
   applyAppearance();
+  listeners.forEach((listener) => listener());
 };
 
-export { applyAppearance, getAppearance, setAppearance };
+export {
+  applyAppearance,
+  getAppearance,
+  getAppearanceRaw,
+  setAppearance,
+  subscribeAppearance
+};

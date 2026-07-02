@@ -402,8 +402,12 @@ const Devices = memo(() => {
           <InputModeSection
             inputMode={values.inputMode}
             pttKey={values.pttKey}
+            vadThresholdDb={values.vadThresholdDb}
             onInputModeChange={(mode) => onChange('inputMode', mode)}
             onPttKeyChange={(key) => onChange('pttKey', key)}
+            onVadThresholdChange={(thresholdDb) =>
+              onChange('vadThresholdDb', thresholdDb)
+            }
           />
 
           <Group label={t('microphoneTestLabel')}>

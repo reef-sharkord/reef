@@ -18,7 +18,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Slider
+  Slider,
+  Switch
 } from '@sharkord/ui';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +30,12 @@ const Appearance = memo(() => {
   const [accent, setAccentState] = useState(() => getAppearance().accent);
   const [scale, setScaleState] = useState(
     () => getAppearance().textScale ?? 100
+  );
+  const [showSaved, setShowSaved] = useState(
+    () => getAppearance().showSavedMessages !== false
+  );
+  const [showQuick, setShowQuick] = useState(
+    () => getAppearance().showQuickSwitch !== false
   );
 
   const chooseAccent = (value?: string) => {
@@ -102,6 +109,34 @@ const Appearance = memo(() => {
             value={[scale]}
             onValueChange={([v]) => chooseScale(v)}
           />
+        </Group>
+
+        <Group
+          label={t('topBarButtonsLabel')}
+          description={t('topBarButtonsDesc')}
+        >
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={showSaved}
+                onCheckedChange={(checked) => {
+                  setShowSaved(checked);
+                  setAppearance({ showSavedMessages: checked });
+                }}
+              />
+              <span className="text-sm">{t('showSavedMessagesLabel')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={showQuick}
+                onCheckedChange={(checked) => {
+                  setShowQuick(checked);
+                  setAppearance({ showQuickSwitch: checked });
+                }}
+              />
+              <span className="text-sm">{t('showQuickSwitchLabel')}</span>
+            </div>
+          </div>
         </Group>
       </CardContent>
     </Card>
