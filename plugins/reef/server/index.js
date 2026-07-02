@@ -5,8 +5,8 @@
 // and returns a normalized list. Doing it here (not in the browser) means the
 // provider API key never reaches clients, there are no CORS problems, and the
 // rate limit is scoped to this server. The admin picks the provider and pastes
-// their own key in plugin settings; if the Klipy key is left blank a shared
-// REEF fallback key is used so it still works out of the box.
+// their own key in plugin settings (Klipy keys are free at klipy.com); the
+// feature is hidden from clients until a key is configured.
 //
 // Feature 2: the switchboard. Every REEF feature that can be governed by a
 // server admin gets a boolean setting here, and the `getFeatures` action tells
@@ -19,10 +19,6 @@
 
 const GIF_PER_PAGE = 24;
 const GIF_TIMEOUT_MS = 8000;
-
-// Shared REEF fallback (Klipy) — used only when the admin hasn't set their own.
-// Prefer setting your own key so the quota is yours.
-const DEFAULT_KLIPY_KEY = 'REDACTED';
 
 const fetchJson = async (url) => {
   const res = await fetch(url, { signal: AbortSignal.timeout(GIF_TIMEOUT_MS) });
@@ -142,7 +138,7 @@ export async function onLoad(ctx) {
       key: 'gifProvider',
       name: 'GIF provider',
       description:
-        'Which service to search: "klipy" or "giphy". Klipy works with the built-in fallback key; Giphy requires your own key below.',
+        'Which service to search: "klipy" or "giphy". Both need your own (free) API key below.',
       type: 'string',
       defaultValue: 'klipy'
     },
@@ -150,7 +146,7 @@ export async function onLoad(ctx) {
       key: 'klipyApiKey',
       name: 'Klipy API key',
       description:
-        'Your Klipy app key (klipy.com/developers). Leave blank to use the shared REEF fallback key.',
+        'Your Klipy app key (free at klipy.com/developers). Required for GIF search with the klipy provider.',
       type: 'string',
       defaultValue: ''
     },
@@ -231,6 +227,15 @@ export async function onLoad(ctx) {
   const reportsAvailable = () =>
     !!settings.get('reportsEnabled') && !!settings.get('mailRelayApiKey');
 
+  // Same honesty rule for GIFs: enabled AND a key for the chosen provider.
+  const gifsAvailable = () => {
+    if (!settings.get('gifEnabled')) return false;
+
+    return settings.get('gifProvider') === 'giphy'
+      ? !!settings.get('giphyApiKey')
+      : !!settings.get('klipyApiKey');
+  };
+
   ctx.actions.register({
     name: 'getFeatures',
     description:
@@ -238,7 +243,7 @@ export async function onLoad(ctx) {
     execute: async () => ({
       ok: true,
       features: {
-        gifs: !!settings.get('gifEnabled'),
+        gifs: gifsAvailable(),
         soundboard: !!settings.get('soundboardEnabled'),
         savedMessages: !!settings.get('savedMessagesEnabled'),
         reports: reportsAvailable(),
@@ -399,7 +404,7 @@ export async function onLoad(ctx) {
     name: 'searchGifs',
     description: 'Search GIFs via the server-configured provider.',
     execute: async (_invoker, payload) => {
-      if (!settings.get('gifEnabled')) {
+      if (!gifsAvailable()) {
         return { ok: false, reason: 'disabled', results: [] };
       }
 
@@ -414,11 +419,7 @@ export async function onLoad(ctx) {
         const results =
           provider === 'giphy'
             ? await searchGiphy(query, page, settings.get('giphyApiKey'))
-            : await searchKlipy(
-                query,
-                page,
-                settings.get('klipyApiKey') || DEFAULT_KLIPY_KEY
-              );
+            : await searchKlipy(query, page, settings.get('klipyApiKey'));
 
         return { ok: true, provider, results };
       } catch (error) {

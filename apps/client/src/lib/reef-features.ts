@@ -9,24 +9,25 @@ import type { TPluginMetadata } from '@sharkord/shared';
  * server we ask its plugin via the `getFeatures` action and store the answer in
  * that server's own store, so the same client can e.g. show the GIF button on
  * one server and hide it on another. A server without the plugin has expressed
- * no policy: everything defaults to on (client-only features work fine without
- * server support).
+ * no policy: client-only features default on (they work fine without server
+ * support), server-backed ones default off (they can't work).
  */
 export type TReefFeatures = {
+  // server-backed: without the plugin (and its API keys) these cannot work
   gifs: boolean;
-  soundboard: boolean;
-  savedMessages: boolean;
-  // server-backed features default OFF: without the plugin they cannot work
   reports: boolean;
   presence: boolean;
+  // client-only: work everywhere, the toggle is a server policy signal
+  soundboard: boolean;
+  savedMessages: boolean;
 };
 
 export const DEFAULT_REEF_FEATURES: TReefFeatures = {
-  gifs: true,
-  soundboard: true,
-  savedMessages: true,
+  gifs: false,
   reports: false,
-  presence: false
+  presence: false,
+  soundboard: true,
+  savedMessages: true
 };
 
 type GetFeaturesResponse = {

@@ -3,6 +3,6 @@
   "name": "REEF",
   "author": "REEF",
   "description": "First-party REEF companion plugin. The admin switchboard for REEF features: GIF search proxy (Giphy or Klipy, key stays server-side), custom status (presence), bug report emails via a mail relay, and policy toggles for soundboard and saved messages. Each feature has an on/off toggle. Runs on a stock Sharkord server; harmless to clients that don't use it.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "sdkVersion": 1
 }
