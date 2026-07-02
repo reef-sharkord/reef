@@ -333,17 +333,29 @@ const openConnection = (
   host: string,
   options?: { token?: string }
 ): TRPCClient => {
-  if (options?.token) {
-    setToken(host, options.token);
-  }
-
   const existing = connections.get(host);
 
-  if (existing) {
+  if (existing && existing.status !== 'closed') {
+    if (options?.token) {
+      setToken(host, options.token);
+    }
+
     activeHost = host;
     setActiveStore(existing.store);
     notify();
     return existing.trpc;
+  }
+
+  if (existing) {
+    // A soft-disconnected entry (markDisconnected) keeps its rail tile, but its
+    // WebSocket client was close()d and tRPC's wsClient never reopens after
+    // that — reusing it would hang forever. Tear it down fully and rebuild.
+    // closeConnection wipes the token map, so seed the token after it.
+    closeConnection(host);
+  }
+
+  if (options?.token) {
+    setToken(host, options.token);
   }
 
   const entry = createEntry(host);

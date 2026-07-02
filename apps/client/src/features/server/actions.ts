@@ -364,7 +364,12 @@ export const addServer = async (
 export const reconnectSavedServer = async (
   saved: SavedServer
 ): Promise<void> => {
-  if (getConnection(saved.host)) {
+  // A 'closed' entry is a soft-disconnected leftover (unclean drop) whose
+  // socket can never reopen; openConnection rebuilds it, so only a live
+  // connection short-circuits the reconnect.
+  const existing = getConnection(saved.host);
+
+  if (existing && existing.status !== 'closed') {
     return;
   }
 
@@ -411,6 +416,34 @@ export const restoreSavedServers = async () => {
   // whichever secondary happened to be restored last.
   if (getConnection(primaryHost)) {
     setActiveHost(primaryHost);
+  }
+};
+
+/**
+ * Reconnect every saved server whose connection dropped uncleanly (mobile 1006
+ * on backgrounding, Wi-Fi flap) using its persisted token. Called by the
+ * foreground-resume controller when the app returns to the foreground — in the
+ * native shells there is no "primary" server (window.location is the app
+ * itself), so this is THE resume path there. Keeps whichever server the user
+ * was viewing active. (UNCORD_PLAN.md §3.6)
+ */
+export const resumeDroppedServers = async (): Promise<void> => {
+  const viewedHost = getActiveHost();
+  let resumedAny = false;
+
+  for (const saved of getSavedServers()) {
+    const existing = getConnection(saved.host);
+
+    if (existing && existing.status === 'closed') {
+      await reconnectSavedServer(saved);
+      resumedAny = true;
+    }
+  }
+
+  // reconnectSavedServer activates each host as it joins; give focus back to
+  // the server the user was actually looking at.
+  if (resumedAny && viewedHost && getConnection(viewedHost)) {
+    setActiveHost(viewedHost);
   }
 };
 

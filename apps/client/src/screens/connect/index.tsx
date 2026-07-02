@@ -1,8 +1,12 @@
 import { LanguageSwitcher } from '@/components/language-switcher';
 import { PluginSlotRenderer } from '@/components/plugin-slot-renderer';
-import { connect } from '@/features/server/actions';
+import { addServer, connect } from '@/features/server/actions';
 import { useInfo } from '@/features/server/hooks';
-import { getFileUrl, getUrlFromServer } from '@/helpers/get-file-url';
+import {
+  getFileUrl,
+  getHostFromServer,
+  getUrlFromServer
+} from '@/helpers/get-file-url';
 import {
   getLocalStorageItem,
   getLocalStorageItemBool,
@@ -14,6 +18,7 @@ import {
   setSessionStorageItem
 } from '@/helpers/storage';
 import { useForm } from '@/hooks/use-form';
+import { getActiveHost } from '@/lib/connections';
 import { PluginSlot, TestId } from '@sharkord/shared';
 import {
   Alert,
@@ -62,6 +67,28 @@ const Connect = memo(() => {
     setLoading(true);
 
     try {
+      // When the active server is a rail server (always the case in the native
+      // shells, where window.location is the app itself), log in against THAT
+      // host via the proven add-server flow — the legacy path below would POST
+      // to the app's own origin and get index.html back instead of JSON.
+      const activeHost = getActiveHost();
+
+      if (activeHost && activeHost !== getHostFromServer()) {
+        const result = await addServer({
+          host: activeHost,
+          identity: values.identity,
+          password: values.password,
+          invite: inviteCode,
+          autoLogin: values.autoLogin || undefined
+        });
+
+        if (!result.ok) {
+          setErrors(result.errors);
+        }
+
+        return;
+      }
+
       const url = getUrlFromServer();
       const response = await fetch(`${url}/login`, {
         method: 'POST',
