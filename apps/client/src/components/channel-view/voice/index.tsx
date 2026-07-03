@@ -1,10 +1,17 @@
-import { useVoiceUsersByChannelId } from '@/features/server/hooks';
+import { UnreadCount } from '@/components/unread-count';
+import { toggleVoiceChatSidebar } from '@/features/app/actions';
+import {
+  useHasUnreadMentions,
+  useUnreadMessagesCount,
+  useVoiceUsersByChannelId
+} from '@/features/server/hooks';
 import { useOwnUserId } from '@/features/server/users/hooks';
 import {
   useHideNonVideoParticipants,
   useHideOwnScreenShare,
   useVoiceChannelExternalStreamsList
 } from '@/features/server/voice/hooks';
+import { MessageSquare } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { ControlsBar } from './controls-bar';
 import { ExternalStreamCard } from './external-stream-card';
@@ -19,6 +26,32 @@ import { VoiceUserCard } from './voice-user-card';
 type TChannelProps = {
   channelId: number;
 };
+
+// Mobile/tablet entry point for the voice channel's text chat: below lg both
+// the top bar (with its chat toggle) and the hover controls bar are hidden,
+// which used to leave no way to open voice chat on phones at all.
+const MobileChatButton = memo(({ channelId }: TChannelProps) => {
+  const unreadCount = useUnreadMessagesCount(channelId);
+  const hasUnreadMentions = useHasUnreadMentions(channelId);
+
+  return (
+    <button
+      type="button"
+      aria-label="Open chat"
+      onClick={() => toggleVoiceChatSidebar(channelId)}
+      className="lg:hidden absolute top-3 right-3 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-border/50 bg-card/90 text-muted-foreground shadow-lg backdrop-blur hover:text-foreground"
+    >
+      <div className="relative flex items-center justify-center">
+        <MessageSquare className="h-5 w-5" />
+        <UnreadCount
+          count={unreadCount}
+          hasMention={hasUnreadMentions}
+          className="absolute -top-2 -right-3 ml-0 min-w-4 h-4 px-1 text-[10px] leading-none"
+        />
+      </div>
+    </button>
+  );
+});
 
 const VoiceChannel = memo(({ channelId }: TChannelProps) => {
   const voiceUsers = useVoiceUsersByChannelId(channelId);
@@ -129,7 +162,8 @@ const VoiceChannel = memo(({ channelId }: TChannelProps) => {
 
   if (voiceUsers.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 relative flex items-center justify-center">
+        <MobileChatButton channelId={channelId} />
         <div className="text-center">
           <p className="text-muted-foreground text-lg mb-2">
             No one in the voice channel
@@ -144,6 +178,7 @@ const VoiceChannel = memo(({ channelId }: TChannelProps) => {
 
   return (
     <div className="flex-1 relative bg-background overflow-hidden">
+      <MobileChatButton channelId={channelId} />
       <VoiceGrid pinnedCardId={pinnedCard?.id} className="h-full">
         {cards}
       </VoiceGrid>
