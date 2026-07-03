@@ -1,5 +1,10 @@
 import { setDmsOpen } from '@/features/server/actions';
 import { setSelectedChannelId } from '@/features/server/channels/actions';
+import {
+  channelReadStateByIdSelector,
+  channelsSelector
+} from '@/features/server/channels/selectors';
+import { serverSliceActions } from '@/features/server/slice';
 import { useInbox } from '@/hooks/use-inbox';
 import { getConnection, setActiveHost } from '@/lib/connections';
 import type { InboxEntry, InboxServer } from '@/lib/inbox';
@@ -9,6 +14,11 @@ import { memo } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
+// The server's markAsRead only persists the read state — it publishes no event
+// back, so the local store must be updated here or the inbox/badges keep
+// showing the entries as unread. DM channels are unread channels too (the DM
+// summary row has no channelId of its own), so mark every unread channel,
+// DMs included.
 const markServerRead = (server: InboxServer) => {
   const conn = getConnection(server.host);
 
@@ -16,13 +26,23 @@ const markServerRead = (server: InboxServer) => {
     return;
   }
 
-  server.entries.forEach((entry) => {
-    if (entry.kind === 'channel' && entry.channelId != null) {
-      void conn.trpc.channels.markAsRead
-        .mutate({ channelId: entry.channelId })
-        .catch(() => {});
+  const state = conn.store.getState();
+
+  for (const channel of channelsSelector(state)) {
+    if (channelReadStateByIdSelector(state, channel.id) === 0) {
+      continue;
     }
-  });
+
+    conn.store.dispatch(
+      serverSliceActions.setChannelReadState({
+        channelId: channel.id,
+        count: 0
+      })
+    );
+    void conn.trpc.channels.markAsRead
+      .mutate({ channelId: channel.id })
+      .catch(() => {});
+  }
 };
 
 const initialsOf = (name: string) =>

@@ -121,11 +121,46 @@ const recompute = () => {
 
 const getInboxSnapshot = (): InboxServer[] => snapshot;
 
-const subscribeInbox = (listener: () => void): (() => void) =>
-  subscribeConnections(() => {
+// Subscribes to BOTH the connection registry and every connection's own store.
+// The registry alone is not enough: its unread summary excludes DMs and only
+// changes on server-level totals, so e.g. a new DM (or a read-state change that
+// keeps the total constant) would leave the inbox stale until some unrelated
+// registry event. recompute() dedupes by key, so redundant store dispatches
+// never produce a new snapshot (and thus never re-render).
+const subscribeInbox = (listener: () => void): (() => void) => {
+  let storeUnsubs: Array<() => void> = [];
+
+  const onChange = () => {
     recompute();
     listener();
+  };
+
+  const resubscribeStores = () => {
+    storeUnsubs.forEach((unsub) => unsub());
+    storeUnsubs = [];
+
+    for (const server of getRailServers()) {
+      const conn = getConnection(server.host);
+
+      if (conn) {
+        storeUnsubs.push(conn.store.subscribe(onChange));
+      }
+    }
+  };
+
+  resubscribeStores();
+
+  const unsubRegistry = subscribeConnections(() => {
+    resubscribeStores();
+    onChange();
   });
+
+  return () => {
+    unsubRegistry();
+    storeUnsubs.forEach((unsub) => unsub());
+    storeUnsubs = [];
+  };
+};
 
 const getInboxTotals = (): { unread: number; hasMention: boolean } => {
   let unread = 0;

@@ -69,6 +69,27 @@ if (Test-Path $gradle) {
   $g = $g -replace 'applicationId\s+"[^"]*"', 'applicationId "com.reef.app"'
   Set-Content $gradle $g -NoNewline
 }
+# Declare the media permissions WebRTC needs. Capacitor's stock manifest only
+# has INTERNET, so Android auto-denies getUserMedia without ever prompting —
+# no mic or camera anywhere in the app. Once declared, Capacitor's
+# BridgeWebChromeClient handles the WebView permission request by showing the
+# Android runtime permission dialog itself.
+$manifest = Join-Path $mobile 'android\app\src\main\AndroidManifest.xml'
+if (Test-Path $manifest) {
+  $m = Get-Content $manifest -Raw
+  $mediaPerms = @(
+    'android.permission.RECORD_AUDIO',
+    'android.permission.MODIFY_AUDIO_SETTINGS',
+    'android.permission.CAMERA'
+  )
+  foreach ($perm in $mediaPerms) {
+    if ($m -notmatch [regex]::Escape($perm)) {
+      $m = $m -replace '(\s*)(<uses-permission android:name="android\.permission\.INTERNET" />)', "`$1`$2`$1<uses-permission android:name=`"$perm`" />"
+    }
+  }
+  Set-Content $manifest $m -NoNewline
+}
+
 # Remove any stock MainActivity generated under the appId-derived package.
 $strayActivity = Join-Path $mobile 'android\app\src\main\java\com\reef\app\MainActivity.java'
 if (Test-Path $strayActivity) { Remove-Item $strayActivity -Force }

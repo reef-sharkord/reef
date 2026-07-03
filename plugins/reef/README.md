@@ -13,7 +13,9 @@ the configured provider **server-side** and returns a normalized list
 server, the provider API key never reaches clients, there are no browser CORS
 problems, and the rate limit is scoped to this server.
 
-Hidden from clients until an API key for the chosen provider is configured.
+> **No GIF button in REEF?** That's this setting. The button only appears once
+> **Enable GIF search** is on **and** an API key for the chosen provider is
+> entered here — REEF hides it on servers that haven't set this up.
 
 **Settings**
 - **Enable GIF search** — master on/off.
@@ -71,8 +73,14 @@ most relays can be adapted.
 
 ## Install
 
-Copy this folder into your server's `<data-dir>/plugins/reef` and enable it in
-**Settings → Plugins**. No build step — it's plain JS.
+1. Create a folder named **exactly `reef`** inside your server's
+   `<data-dir>/plugins/` — the folder name is the plugin id, so
+   `plugins/reef-plugin/` or files loose in `plugins/` will **not** load.
+2. Copy everything from this folder into `<data-dir>/plugins/reef/`
+   (`manifest.json` must end up at `plugins/reef/manifest.json`).
+3. Enable it in **Settings → Plugins**.
+
+No build step — it's plain JS.
 
 ## Roadmap
 
