@@ -10,6 +10,10 @@ import { getDesktopApi } from '@/helpers/desktop';
 import { getFileUrl, getFileUrlForHost } from '@/helpers/get-file-url';
 import { getHostForStore, setActiveHost } from '@/lib/connections';
 import { isDndActive } from '@/lib/dnd';
+import {
+  isNativeNotificationsAvailable,
+  sendNativeNotification
+} from '@/lib/native-notifications';
 import { isChannelMuted, isServerMuted } from '@/lib/notification-prefs';
 import {
   getPlainTextFromHtml,
@@ -34,10 +38,6 @@ const sendBrowserNotification = (
   channelId: number,
   isDm = false
 ) => {
-  if (!('Notification' in window) || Notification.permission !== 'granted') {
-    return;
-  }
-
   const state = store.getState();
 
   const user = userByIdSelector(state, message.userId);
@@ -61,6 +61,23 @@ const sendBrowserNotification = (
   // bound store's host), not the active one — so notifications from a
   // backgrounded server show the right avatar. (UNCORD_PLAN.md §3.5)
   const boundHost = getHostForStore(getActiveStore());
+
+  // Android shell: the web Notification API is inert inside the WebView, so
+  // show a system notification via Capacitor instead. Everything upstream
+  // (prefs, mutes, DND, foreground checks) already decided this should notify.
+  if (isNativeNotificationsAvailable()) {
+    sendNativeNotification({
+      title,
+      body,
+      host: boundHost ?? undefined
+    });
+    return;
+  }
+
+  if (!('Notification' in window) || Notification.permission !== 'granted') {
+    return;
+  }
+
   const icon = user?.avatar
     ? boundHost
       ? getFileUrlForHost(boundHost, user.avatar)

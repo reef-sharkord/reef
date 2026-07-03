@@ -3,6 +3,7 @@ import {
   useChannelById,
   useChannelsByCategoryId,
   useCurrentVoiceChannelId,
+  useIsChannelMuted,
   useSelectedChannelId
 } from '@/features/server/channels/hooks';
 import {
@@ -38,7 +39,7 @@ import {
   TestId,
   getTrpcError
 } from '@sharkord/shared';
-import { Hash, Volume2 } from 'lucide-react';
+import { BellOff, Hash, Volume2 } from 'lucide-react';
 import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -63,6 +64,7 @@ const Voice = memo(
     const externalStreams = useVoiceChannelExternalStreamsList(channel.id);
     const unreadCount = useUnreadMessagesCount(channel.id);
     const hasUnreadMentions = useHasUnreadMentions(channel.id);
+    const isMuted = useIsChannelMuted(channel.id);
     const currentVoiceChannelId = useCurrentVoiceChannelId();
     const someoneIsSharingScreen = useHasSharingScreenUsers(channel.id);
 
@@ -92,8 +94,9 @@ const Voice = memo(
           )}
 
           <span className="flex-1 truncate">{channel.name}</span>
+          {isMuted && <BellOff className="h-3.5 w-3.5 shrink-0 opacity-70" />}
 
-          {unreadCount > 0 && (
+          {!isMuted && unreadCount > 0 && (
             <UnreadCount count={unreadCount} hasMention={hasUnreadMentions} />
           )}
         </ItemWrapper>
@@ -136,18 +139,23 @@ const Text = memo(({ channel, ...props }: TTextProps) => {
   const typingUsers = useTypingUsersByChannelId(channel.id);
   const unreadCount = useUnreadMessagesCount(channel.id);
   const hasUnreadMessages = useHasUnreadMentions(channel.id);
+  const isMuted = useIsChannelMuted(channel.id);
   const hasTypingUsers = typingUsers.length > 0;
 
   return (
-    <ItemWrapper {...props}>
+    <ItemWrapper
+      {...props}
+      className={cn(props.className, { 'opacity-60': isMuted })}
+    >
       <Hash className="h-4 w-4" />
       <span className="flex-1">{channel.name}</span>
+      {isMuted && <BellOff className="h-3.5 w-3.5 shrink-0 opacity-70" />}
       {hasTypingUsers && (
         <div className="flex items-center gap-0.5 ml-auto">
           <TypingDots className="space-x-0.5" />
         </div>
       )}
-      {!hasTypingUsers && unreadCount > 0 && (
+      {!hasTypingUsers && !isMuted && unreadCount > 0 && (
         <UnreadCount count={unreadCount} hasMention={hasUnreadMessages} />
       )}
     </ItemWrapper>

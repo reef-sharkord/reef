@@ -17,6 +17,8 @@
 // More features (presence / custom status, bug reports) will hang off this same
 // plugin, each behind its own on/off setting.
 
+import { createPush } from './push.js';
+
 const GIF_PER_PAGE = 24;
 const GIF_TIMEOUT_MS = 8000;
 
@@ -219,8 +221,74 @@ export async function onLoad(ctx) {
       description: 'API key for the mail relay. Kept server-side.',
       type: 'string',
       defaultValue: ''
+    },
+    {
+      key: 'pushEnabled',
+      name: 'Enable push notifications (ntfy)',
+      description:
+        'Notify offline REEF mobile users about DMs and @mentions through ntfy (open source, no Google services). Users subscribe to their private topic in the ntfy app; see the README.',
+      type: 'boolean',
+      defaultValue: false
+    },
+    {
+      key: 'ntfyServerUrl',
+      name: 'ntfy server URL',
+      description:
+        'The ntfy instance to publish through. The public https://ntfy.sh works out of the box; self-hosters point this at their own instance.',
+      type: 'string',
+      defaultValue: 'https://ntfy.sh'
+    },
+    {
+      key: 'ntfyToken',
+      name: 'ntfy access token',
+      description:
+        'Optional Bearer token, only needed if your ntfy instance requires auth to publish. Kept server-side.',
+      type: 'string',
+      defaultValue: ''
     }
   ]);
+
+  // --- push notifications (ntfy) ---------------------------------------------
+  const push = createPush(ctx, settings);
+
+  ctx.actions.register({
+    name: 'registerPushTopic',
+    description:
+      "Register the calling user's private ntfy topic for push notifications.",
+    execute: async (invoker, payload) => {
+      if (!push.available()) {
+        return { ok: false, reason: 'disabled' };
+      }
+
+      const ok = push.registerTopic(
+        invoker && invoker.userId,
+        payload && payload.topic
+      );
+
+      // The client needs the same ntfy instance for its subscribe link.
+      return { ok, ntfyServerUrl: String(settings.get('ntfyServerUrl')) };
+    }
+  });
+
+  ctx.actions.register({
+    name: 'unregisterPushTopic',
+    description: "Remove one of the calling user's ntfy topics.",
+    execute: async (invoker, payload) => {
+      const ok = push.unregisterTopic(
+        invoker && invoker.userId,
+        payload && payload.topic
+      );
+
+      return { ok };
+    }
+  });
+
+  ctx.events.on('message:created', (payload) => {
+    // fire-and-forget: pushes must never block message delivery
+    void push.onMessageCreated(payload).catch((error) => {
+      ctx.error?.('reef: push send failed', (error && error.message) || error);
+    });
+  });
 
   // Reports are only offered to clients when the admin turned them on AND a
   // relay key exists — otherwise submitting could never succeed.
@@ -240,16 +308,22 @@ export async function onLoad(ctx) {
     name: 'getFeatures',
     description:
       'Which REEF features this server has enabled (the admin switchboard).',
-    execute: async () => ({
-      ok: true,
-      features: {
-        gifs: gifsAvailable(),
-        soundboard: !!settings.get('soundboardEnabled'),
-        savedMessages: !!settings.get('savedMessagesEnabled'),
-        reports: reportsAvailable(),
-        presence: !!settings.get('presenceEnabled')
-      }
-    })
+    execute: async (invoker) => {
+      // any action call proves this user's REEF app is alive (push suppression)
+      push.touch(invoker && invoker.userId);
+
+      return {
+        ok: true,
+        features: {
+          gifs: gifsAvailable(),
+          soundboard: !!settings.get('soundboardEnabled'),
+          savedMessages: !!settings.get('savedMessagesEnabled'),
+          reports: reportsAvailable(),
+          presence: !!settings.get('presenceEnabled'),
+          push: push.available()
+        }
+      };
+    }
   });
 
   // --- presence / custom status ---------------------------------------------
@@ -262,6 +336,8 @@ export async function onLoad(ctx) {
     name: 'setPresence',
     description: 'Set (or clear, with empty text) your custom status text.',
     execute: async (invoker, payload) => {
+      push.touch(invoker && invoker.userId);
+
       if (!settings.get('presenceEnabled')) {
         return { ok: false, reason: 'disabled' };
       }
@@ -290,7 +366,11 @@ export async function onLoad(ctx) {
   ctx.actions.register({
     name: 'getPresences',
     description: 'Get all custom status texts set on this server.',
-    execute: async () => {
+    execute: async (invoker) => {
+      // REEF clients poll this every 60s — the main liveness signal that
+      // suppresses redundant ntfy pushes while the app is alive.
+      push.touch(invoker && invoker.userId);
+
       if (!settings.get('presenceEnabled')) {
         return { ok: false, reason: 'disabled', presences: {} };
       }

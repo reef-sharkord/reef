@@ -73,14 +73,17 @@ if (Test-Path $gradle) {
 # has INTERNET, so Android auto-denies getUserMedia without ever prompting —
 # no mic or camera anywhere in the app. Once declared, Capacitor's
 # BridgeWebChromeClient handles the WebView permission request by showing the
-# Android runtime permission dialog itself.
+# Android runtime permission dialog itself. POST_NOTIFICATIONS is the
+# Android 13+ runtime permission for the local notifications the client posts
+# from its kept-alive socket (no push service — deliberately Firebase-free).
 $manifest = Join-Path $mobile 'android\app\src\main\AndroidManifest.xml'
 if (Test-Path $manifest) {
   $m = Get-Content $manifest -Raw
   $mediaPerms = @(
     'android.permission.RECORD_AUDIO',
     'android.permission.MODIFY_AUDIO_SETTINGS',
-    'android.permission.CAMERA'
+    'android.permission.CAMERA',
+    'android.permission.POST_NOTIFICATIONS'
   )
   foreach ($perm in $mediaPerms) {
     if ($m -notmatch [regex]::Escape($perm)) {
@@ -98,46 +101,20 @@ $mainActivityDir = Split-Path $mainActivityDst
 if (-not (Test-Path $mainActivityDir)) { New-Item -ItemType Directory -Force $mainActivityDir | Out-Null }
 Copy-Item (Join-Path $mobile 'native-overrides\MainActivity.java') $mainActivityDst -Force
 
-# Conditional Firebase Cloud Messaging wiring. The @capacitor-firebase/messaging
-# plugin is always compiled in, but Firebase is only CONFIGURED — and the
-# google-services Gradle plugin applied — when a mobile/google-services.json is
-# present. Without it the APK still builds normally; FCM just stays inert.
-Write-Host "Configuring Firebase (FCM)..."
-$googleServicesSrc = Join-Path $mobile 'google-services.json'
+# REEF is deliberately Firebase-free (notifications = local notifications from
+# the kept-alive socket + ntfy for the killed-app case). Scrub any leftover
+# google-services wiring an older build may have written into the generated
+# android/ project so it can never sneak back in.
 $appGradle = Join-Path $mobile 'android\app\build.gradle'
-$projGradle = Join-Path $mobile 'android\build.gradle'
 $googleServicesDst = Join-Path $mobile 'android\app\google-services.json'
-
-if (Test-Path $googleServicesSrc) {
-  Write-Host "  google-services.json found -> FCM enabled."
-  Copy-Item $googleServicesSrc $googleServicesDst -Force
-
-  if (Test-Path $projGradle) {
-    $pg = Get-Content $projGradle -Raw
-    if ($pg -notmatch 'com\.google\.gms:google-services') {
-      $pg = $pg -replace "(classpath 'com\.android\.tools\.build:gradle:[^']*')", "`$1`n        classpath 'com.google.gms:google-services:4.4.0'"
-      Set-Content $projGradle $pg -NoNewline
-    }
+if (Test-Path $appGradle) {
+  $ag = Get-Content $appGradle -Raw
+  if ($ag -match 'com\.google\.gms\.google-services') {
+    $ag = ($ag -replace "(?m)^\s*apply plugin: 'com\.google\.gms\.google-services'\s*$", '').TrimEnd() + "`n"
+    Set-Content $appGradle $ag -NoNewline
   }
-  if (Test-Path $appGradle) {
-    $ag = Get-Content $appGradle -Raw
-    if ($ag -notmatch 'com\.google\.gms\.google-services') {
-      $ag = $ag.TrimEnd() + "`napply plugin: 'com.google.gms.google-services'`n"
-      Set-Content $appGradle $ag -NoNewline
-    }
-  }
-} else {
-  Write-Host "  no google-services.json -> FCM disabled (APK builds normally)."
-  # Ensure no stale apply/config breaks the build when the file is absent.
-  if (Test-Path $appGradle) {
-    $ag = Get-Content $appGradle -Raw
-    if ($ag -match 'com\.google\.gms\.google-services') {
-      $ag = ($ag -replace "(?m)^\s*apply plugin: 'com\.google\.gms\.google-services'\s*$", '').TrimEnd() + "`n"
-      Set-Content $appGradle $ag -NoNewline
-    }
-  }
-  if (Test-Path $googleServicesDst) { Remove-Item $googleServicesDst -Force }
 }
+if (Test-Path $googleServicesDst) { Remove-Item $googleServicesDst -Force }
 
 $task = if ($Release) { 'assembleRelease' } else { 'assembleDebug' }
 Write-Host "Running gradle $task ..."

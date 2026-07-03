@@ -63,6 +63,9 @@ export interface IServerState {
   readStatesMap: {
     [channelId: number]: number | undefined;
   };
+  // channels the user muted on THIS server (mirrored from the per-host
+  // localStorage prefs so selectors/badges can react to it)
+  mutedChannelIds: number[];
   pluginsMetadata: TPluginMetadata[];
   // which REEF features this server's reef plugin allows (per-server policy)
   reefFeatures: TReefFeatures;
@@ -108,6 +111,7 @@ const initialState: IServerState = {
   pinnedCard: undefined,
   channelPermissions: {},
   readStatesMap: {},
+  mutedChannelIds: [],
   pluginsMetadata: [],
   reefFeatures: DEFAULT_REEF_FEATURES,
   presences: {},
@@ -610,6 +614,9 @@ export const serverSlice = createSlice({
       const { channelId, count } = action.payload;
 
       state.readStatesMap[channelId] = count;
+    },
+    setMutedChannelIds: (state, action: PayloadAction<number[]>) => {
+      state.mutedChannelIds = action.payload;
     },
 
     // EMOJIS ------------------------------------------------------------

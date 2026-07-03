@@ -17,6 +17,7 @@ export type TReefFeatures = {
   gifs: boolean;
   reports: boolean;
   presence: boolean;
+  push: boolean;
   // client-only: work everywhere, the toggle is a server policy signal
   soundboard: boolean;
   savedMessages: boolean;
@@ -26,6 +27,7 @@ export const DEFAULT_REEF_FEATURES: TReefFeatures = {
   gifs: false,
   reports: false,
   presence: false,
+  push: false,
   soundboard: true,
   savedMessages: true
 };

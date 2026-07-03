@@ -5,6 +5,7 @@ import {
   getHostFromServer,
   getUrlForHost
 } from '@/helpers/get-file-url';
+import { setRestoringSavedServers } from '@/lib/boot-state';
 import {
   closeConnection,
   getActiveConnection,
@@ -408,8 +409,18 @@ export const restoreSavedServers = async () => {
   const primaryHost = getHostFromServer();
   const saved = getSavedServers().filter((s) => s.host !== primaryHost);
 
-  for (const server of saved) {
-    await reconnectSavedServer(server);
+  // Signal the boot phase so the standalone shells can show a loading screen
+  // instead of flashing the empty Welcome while the rail reconnects.
+  if (saved.length > 0) {
+    setRestoringSavedServers(true);
+  }
+
+  try {
+    for (const server of saved) {
+      await reconnectSavedServer(server);
+    }
+  } finally {
+    setRestoringSavedServers(false);
   }
 
   // land the user on the primary server if it is connected, rather than on

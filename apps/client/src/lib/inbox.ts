@@ -3,7 +3,10 @@ import {
   channelsSelector,
   directMessagesUnreadCountSelector
 } from '@/features/server/channels/selectors';
-import { hasUnreadMentionsSelector } from '@/features/server/selectors';
+import {
+  hasUnreadMentionsSelector,
+  mutedChannelIdsSelector
+} from '@/features/server/selectors';
 import {
   getConnection,
   getRailServers,
@@ -45,9 +48,10 @@ const build = (): InboxServer[] => {
 
     const state = conn.store.getState();
     const entries: InboxEntry[] = [];
+    const mutedIds = mutedChannelIdsSelector(state);
 
     for (const channel of channelsSelector(state)) {
-      if (channel.isDm) {
+      if (channel.isDm || mutedIds.includes(channel.id)) {
         continue;
       }
 

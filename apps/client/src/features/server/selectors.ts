@@ -220,10 +220,23 @@ export const hasUnreadMentionsSelector = createCachedSelector(
   }
 )((_, channelId: number) => channelId);
 
+// Channels the user muted on this server. Muted channels never contribute to
+// unread badges (category, rail, inbox) — only their own row shows a cue.
+export const mutedChannelIdsSelector = (state: IRootState) =>
+  state.server.mutedChannelIds;
+
 export const categoryUnreadMessagesCountSelector = createCachedSelector(
-  [visibleChannelsInCategorySelector, channelsReadStatesSelector],
-  (channelsInCategory, readStatesMap) => {
+  [
+    visibleChannelsInCategorySelector,
+    channelsReadStatesSelector,
+    mutedChannelIdsSelector
+  ],
+  (channelsInCategory, readStatesMap, mutedIds) => {
     return channelsInCategory.reduce((total, channel) => {
+      if (mutedIds.includes(channel.id)) {
+        return total;
+      }
+
       return total + (readStatesMap[channel.id] ?? 0);
     }, 0);
   }
@@ -234,10 +247,15 @@ export const categoryHasUnreadMentionsSelector = createCachedSelector(
     visibleChannelsInCategorySelector,
     channelsReadStatesSelector,
     messagesMapSelector,
-    ownUserIdSelector
+    ownUserIdSelector,
+    mutedChannelIdsSelector
   ],
-  (channelsInCategory, readStatesMap, messagesMap, ownUserId) => {
+  (channelsInCategory, readStatesMap, messagesMap, ownUserId, mutedIds) => {
     return channelsInCategory.some((channel) => {
+      if (mutedIds.includes(channel.id)) {
+        return false;
+      }
+
       return hasUnreadMentionInMessages(
         readStatesMap[channel.id] ?? 0,
         messagesMap[channel.id] ?? [],
@@ -261,12 +279,20 @@ const serverBadgeChannelsSelector = createSelector(
 );
 
 // Server-wide unread total (across this server's viewable channels) — used by
-// the multi-server rail to badge each server. (UNCORD_PLAN.md §3.2, M4)
+// the multi-server rail to badge each server. Muted channels excluded.
+// (UNCORD_PLAN.md §3.2, M4)
 export const serverUnreadCountSelector = createSelector(
-  [serverBadgeChannelsSelector, channelsReadStatesSelector],
-  (channels, readStatesMap) =>
+  [
+    serverBadgeChannelsSelector,
+    channelsReadStatesSelector,
+    mutedChannelIdsSelector
+  ],
+  (channels, readStatesMap, mutedIds) =>
     channels.reduce(
-      (total, channel) => total + (readStatesMap[channel.id] ?? 0),
+      (total, channel) =>
+        mutedIds.includes(channel.id)
+          ? total
+          : total + (readStatesMap[channel.id] ?? 0),
       0
     )
 );
@@ -277,14 +303,17 @@ export const serverHasUnreadMentionsSelector = createSelector(
     serverBadgeChannelsSelector,
     channelsReadStatesSelector,
     messagesMapSelector,
-    ownUserIdSelector
+    ownUserIdSelector,
+    mutedChannelIdsSelector
   ],
-  (channels, readStatesMap, messagesMap, ownUserId) =>
-    channels.some((channel) =>
-      hasUnreadMentionInMessages(
-        readStatesMap[channel.id] ?? 0,
-        messagesMap[channel.id] ?? [],
-        ownUserId
-      )
+  (channels, readStatesMap, messagesMap, ownUserId, mutedIds) =>
+    channels.some(
+      (channel) =>
+        !mutedIds.includes(channel.id) &&
+        hasUnreadMentionInMessages(
+          readStatesMap[channel.id] ?? 0,
+          messagesMap[channel.id] ?? [],
+          ownUserId
+        )
     )
 );

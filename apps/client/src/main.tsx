@@ -17,6 +17,8 @@ import { BackgroundConnectionController } from './components/routing/background-
 import { DesktopController } from './components/routing/desktop-controller.tsx';
 import { ForegroundResumeController } from './components/routing/foreground-resume-controller.tsx';
 import { Routing } from './components/routing/index.tsx';
+import { NativePushController } from './components/routing/native-push-controller.tsx';
+import { ReconnectController } from './components/routing/reconnect-controller.tsx';
 import { SavedServersController } from './components/routing/saved-servers-controller.tsx';
 import { UpdateNotifier } from './components/routing/update-notifier.tsx';
 import { ScreenSharePicker } from './components/screen-share-picker/index.tsx';
@@ -59,6 +61,8 @@ createRoot(document.getElementById('root')!).render(
             <ServerScreensProvider />
             <AutoLoginController />
             <ForegroundResumeController />
+            <ReconnectController />
+            <NativePushController />
             <SavedServersController />
             <BackgroundConnectionController />
             <DesktopController />

@@ -12,25 +12,37 @@ import {
 } from '@/features/server/hooks';
 import { isStandalone } from '@/helpers/standalone';
 import { useRailServers } from '@/hooks/use-connections';
+import { useIsRestoringSavedServers } from '@/lib/boot-state';
 import { getConnection } from '@/lib/connections';
 import { cn } from '@/lib/utils';
 import { Connect } from '@/screens/connect';
 import { Disconnected } from '@/screens/disconnected';
 import { LoadingApp } from '@/screens/loading-app';
+import { Reconnecting } from '@/screens/reconnecting';
 import { ServerView } from '@/screens/server-view';
 import { DisconnectCode } from '@sharkord/shared';
+import { Spinner } from '@sharkord/ui';
 import { PanelLeftOpen } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Provider } from 'react-redux';
 
-const isHardDisconnect = (
+// Kicked/banned are terminal: the user must act. A transient unclean drop
+// (1006, Wi-Fi flap, server restart) instead gets the Reconnecting screen
+// while the ReconnectController retries in the background.
+const isTerminalDisconnect = (
   disconnectInfo: ReturnType<typeof useDisconnectInfo>
 ) =>
   !!disconnectInfo &&
-  (!disconnectInfo.wasClean ||
-    disconnectInfo.code === DisconnectCode.KICKED ||
+  (disconnectInfo.code === DisconnectCode.KICKED ||
     disconnectInfo.code === DisconnectCode.BANNED);
+
+const isTransientDisconnect = (
+  disconnectInfo: ReturnType<typeof useDisconnectInfo>
+) =>
+  !!disconnectInfo &&
+  !disconnectInfo.wasClean &&
+  !isTerminalDisconnect(disconnectInfo);
 
 /**
  * The screen for the currently-active server. Rendered under that server's own
@@ -55,8 +67,12 @@ const ActiveServerScreen = memo(() => {
   }
 
   if (!isConnected) {
-    if (isHardDisconnect(disconnectInfo)) {
+    if (isTerminalDisconnect(disconnectInfo)) {
       return <Disconnected info={disconnectInfo!} />;
+    }
+
+    if (isTransientDisconnect(disconnectInfo)) {
+      return <Reconnecting />;
     }
 
     return <Connect />;
@@ -79,6 +95,7 @@ const Routing = memo(() => {
   const isAutoConnecting = useIsAutoConnecting();
   const disconnectInfo = useDisconnectInfo();
   const isActiveConnected = useIsConnected();
+  const isRestoringSavedServers = useIsRestoringSavedServers();
 
   // Mobile rail for the disconnected states (Connect/Disconnected/Loading),
   // where ServerView — and its swipe-to-open rail — isn't mounted. Without this
@@ -101,6 +118,18 @@ const Routing = memo(() => {
 
   if (!activeConnection) {
     if (isStandalone()) {
+      // Launch: while the rail is reconnecting saved servers, show a boot
+      // loading screen instead of flashing the empty Welcome (the first
+      // server to join becomes active and takes over from here).
+      if (isRestoringSavedServers) {
+        return (
+          <div className="flex h-full flex-col items-center justify-center gap-2">
+            <Spinner size="lg" />
+            <span className="text-xl">{t('connectingServers')}</span>
+          </div>
+        );
+      }
+
       // Native shells have no primary server: show the branded welcome / empty
       // state so the user can add their first server. (M6/M7)
       return <Welcome />;
@@ -118,8 +147,12 @@ const Routing = memo(() => {
       return <LoadingApp text={t('loggingInAutomatically')} />;
     }
 
-    if (isHardDisconnect(disconnectInfo)) {
+    if (isTerminalDisconnect(disconnectInfo)) {
       return <Disconnected info={disconnectInfo!} />;
+    }
+
+    if (isTransientDisconnect(disconnectInfo)) {
+      return <Reconnecting />;
     }
 
     return <Connect />;

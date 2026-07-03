@@ -13,6 +13,7 @@
   "loggingInAutomatically": "Logging in automatically...",
   "loadingApp": "Loading REEF",
   "loadingPlugins": "Loading Plugins",
+  "connectingServers": "Connecting to your servers…",
   "standaloneEmpty": "Add a server with the + button to get started.",
   "welcomeTitle": "Welcome to REEF",
   "welcomeSubtitle": "A Sharkord Lobby",

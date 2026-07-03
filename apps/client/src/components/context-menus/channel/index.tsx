@@ -1,12 +1,16 @@
 import { ServerScreen } from '@/components/server-screens/screens';
-import { openVoiceChatSidebar } from '@/features/app/actions';
+import {
+  openVoiceChatSidebar,
+  toggleChannelMuted
+} from '@/features/app/actions';
 import { requestConfirmation } from '@/features/dialogs/actions';
 import { openServerScreen } from '@/features/server-screens/actions';
 import { markChannelAsRead } from '@/features/server/actions';
-import { useChannelById } from '@/features/server/channels/hooks';
+import {
+  useChannelById,
+  useIsChannelMuted
+} from '@/features/server/channels/hooks';
 import { useCan } from '@/features/server/hooks';
-import { getActiveHost } from '@/lib/connections';
-import { isChannelMuted, setChannelMuted } from '@/lib/notification-prefs';
 import { getTRPCClient } from '@/lib/trpc';
 import { ChannelType, Permission } from '@sharkord/shared';
 import {
@@ -18,7 +22,7 @@ import {
   ContextMenuTrigger
 } from '@sharkord/ui';
 import { Bell, BellOff, Check } from 'lucide-react';
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
@@ -33,20 +37,14 @@ const ChannelContextMenu = memo(
     const can = useCan();
     const channel = useChannelById(channelId);
 
-    const [muted, setMuted] = useState(() =>
-      isChannelMuted(getActiveHost() ?? '', channelId)
-    );
+    const muted = useIsChannelMuted(channelId);
 
     const canManageChannels = can(Permission.MANAGE_CHANNELS);
     const isVoiceChannel = channel?.type === ChannelType.VOICE;
 
     const toggleMuted = useCallback(() => {
-      const host = getActiveHost();
-      if (!host) return;
-      const next = !muted;
-      setChannelMuted(host, channelId, next);
-      setMuted(next);
-    }, [channelId, muted]);
+      toggleChannelMuted(channelId);
+    }, [channelId]);
 
     const onMarkRead = useCallback(() => {
       markChannelAsRead(channelId, true);

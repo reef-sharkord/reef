@@ -10,7 +10,14 @@ import {
   useBrowserNotificationsForMentions,
   useBrowserNotificationsForReplies
 } from '@/features/app/hooks';
+import { isNativeApp } from '@/helpers/native';
 import {
+  getOrCreatePushTopic,
+  getPushRegistrations,
+  subscribePushRegistrations
+} from '@/lib/reef-push';
+import {
+  Button,
   Card,
   CardContent,
   CardDescription,
@@ -19,7 +26,8 @@ import {
   Group,
   Switch
 } from '@sharkord/ui';
-import { memo } from 'react';
+import { BellRing } from 'lucide-react';
+import { memo, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const Notifications = memo(() => {
@@ -28,6 +36,17 @@ const Notifications = memo(() => {
   const browserNotificationsForMentions = useBrowserNotificationsForMentions();
   const browserNotificationsForDms = useBrowserNotificationsForDms();
   const browserNotificationsForReplies = useBrowserNotificationsForReplies();
+  const pushRegistrations = useSyncExternalStore(
+    subscribePushRegistrations,
+    getPushRegistrations,
+    getPushRegistrations
+  );
+
+  // One subscribe link per distinct ntfy instance the connected servers use
+  // (usually just one: ntfy.sh).
+  const ntfyServers = Array.from(
+    new Set(pushRegistrations.map((r) => r.ntfyServerUrl))
+  );
 
   return (
     <Card>
@@ -73,6 +92,25 @@ const Notifications = memo(() => {
             }
           />
         </Group>
+
+        {isNativeApp() && ntfyServers.length > 0 && (
+          <Group label={t('ntfyPushLabel')} description={t('ntfyPushDesc')}>
+            <div className="flex flex-col items-end gap-1">
+              {ntfyServers.map((serverUrl) => (
+                <Button key={serverUrl} asChild variant="outline" size="sm">
+                  <a
+                    href={`${serverUrl}/${getOrCreatePushTopic()}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <BellRing className="mr-2 h-4 w-4" />
+                    {t('ntfySubscribeBtn')}
+                  </a>
+                </Button>
+              ))}
+            </div>
+          </Group>
+        )}
       </CardContent>
     </Card>
   );

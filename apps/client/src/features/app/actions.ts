@@ -4,7 +4,9 @@ import { isStandalone } from '@/helpers/standalone';
 import { LocalStorageKey, setLocalStorageItemBool } from '@/helpers/storage';
 import { getActiveHost } from '@/lib/connections';
 import {
+  getMutedChannelIds,
   getNotifPrefsOverride,
+  setChannelMuted,
   setNotifPref,
   type TNotifPrefKey
 } from '@/lib/notification-prefs';
@@ -17,6 +19,7 @@ import type { TMessageJumpToTarget } from '@/types';
 import type { TServerInfo } from '@sharkord/shared';
 import { toast } from 'sonner';
 import { markChannelAsRead, setInfo } from '../server/actions';
+import { serverSliceActions } from '../server/slice';
 import { store, type ServerStore } from '../store';
 import {
   pluginSlotDebugSelector,
@@ -213,6 +216,33 @@ export const applyNotificationPrefs = (host: string, target: ServerStore) => {
       )
     );
   }
+};
+
+/**
+ * Seed a host's muted-channel list into its store on connect, so unread badges
+ * and the inbox can exclude muted channels reactively (localStorage alone can't
+ * trigger re-renders).
+ */
+export const applyMutedChannels = (host: string, target: ServerStore) => {
+  target.dispatch(
+    serverSliceActions.setMutedChannelIds(getMutedChannelIds(host))
+  );
+};
+
+/** Flip a channel's mute on the active server: persist + update its store. */
+export const toggleChannelMuted = (channelId: number) => {
+  const host = getActiveHost();
+
+  if (!host) {
+    return;
+  }
+
+  const muted = getMutedChannelIds(host).includes(channelId);
+
+  setChannelMuted(host, channelId, !muted);
+  store.dispatch(
+    serverSliceActions.setMutedChannelIds(getMutedChannelIds(host))
+  );
 };
 
 export const setBrowserNotifications = async (enabled: boolean) => {

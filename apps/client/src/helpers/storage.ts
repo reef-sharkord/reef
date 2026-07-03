@@ -44,6 +44,8 @@ export enum LocalStorageKey {
   MUTED_CHANNELS = 'reef-muted-channels',
   // Do-Not-Disturb + quiet hours. (M8)
   DND_SETTINGS = 'reef-dnd',
+  // This device's private ntfy topic for push notifications (no Firebase).
+  NTFY_TOPIC = 'reef-ntfy-topic',
   // Rail tile order (array of hosts) and per-server local overrides
   // (custom name/color). Client-only personalization. (M8)
   RAIL_ORDER = 'reef-rail-order',

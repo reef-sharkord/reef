@@ -71,6 +71,25 @@ most relays can be adapted.
 - **Mail from address** — sender the relay may send as.
 - **Mail relay API key** — required for the feature to appear in clients.
 
+### Push notifications (ntfy — no Google services)
+Notifies **offline** REEF mobile users about **DMs** and **@mentions** through
+[ntfy](https://ntfy.sh), the open-source pub/sub notification service. No
+Firebase, no accounts: each REEF app generates a private random topic (the
+topic name is the secret) and registers it via the `registerPushTopic` action;
+the plugin publishes to that topic and the user's ntfy app shows the
+notification. Online users are skipped — their running REEF app already
+notifies locally.
+
+Users need the free **ntfy app** (Play Store / F-Droid) and to tap
+"Subscribe in ntfy" in REEF's notification settings once.
+
+**Settings**
+- **Enable push notifications (ntfy)** — default off.
+- **ntfy server URL** — default `https://ntfy.sh` (works out of the box);
+  self-hosters point this at their own instance.
+- **ntfy access token** — optional, only for instances that require auth to
+  publish.
+
 ## Install
 
 1. Create a folder named **exactly `reef`** inside your server's
@@ -79,6 +98,9 @@ most relays can be adapted.
 2. Copy everything from this folder into `<data-dir>/plugins/reef/`
    (`manifest.json` must end up at `plugins/reef/manifest.json`).
 3. Enable it in **Settings → Plugins**.
+4. **Give your member roles the `USE_PLUGINS` permission** (Settings → Roles).
+   Without it, every reef feature silently does nothing for regular users —
+   only the owner would see GIFs, presence, push, and reports.
 
 No build step — it's plain JS.
 

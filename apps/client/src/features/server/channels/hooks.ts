@@ -1,3 +1,4 @@
+import { mutedChannelIdsSelector } from '@/features/server/selectors';
 import type { IRootState } from '@/features/store';
 import { useSelector } from 'react-redux';
 import {
@@ -20,6 +21,11 @@ export const useChannels = () =>
 
 export const useChannelById = (channelId: number) =>
   useSelector((state: IRootState) => channelByIdSelector(state, channelId));
+
+export const useIsChannelMuted = (channelId: number) =>
+  useSelector((state: IRootState) =>
+    mutedChannelIdsSelector(state).includes(channelId)
+  );
 
 export const useChannelsByCategoryId = (categoryId: number) =>
   useSelector((state: IRootState) =>

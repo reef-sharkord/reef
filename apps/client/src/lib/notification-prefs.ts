@@ -123,6 +123,13 @@ const readMutedChannels = (): string[] => {
 const isChannelMuted = (host: string, channelId: number): boolean =>
   readMutedChannels().includes(channelKey(host, channelId));
 
+/** All muted channel ids for `host` — seeds the host store's muted list. */
+const getMutedChannelIds = (host: string): number[] =>
+  readMutedChannels()
+    .filter((k) => k.startsWith(`${host}:`))
+    .map((k) => Number(k.slice(host.length + 1)))
+    .filter((id) => Number.isFinite(id));
+
 const setChannelMuted = (host: string, channelId: number, muted: boolean) => {
   const key = channelKey(host, channelId);
   const current = readMutedChannels().filter((k) => k !== key);
@@ -135,6 +142,7 @@ const setChannelMuted = (host: string, channelId: number, muted: boolean) => {
 };
 
 export {
+  getMutedChannelIds,
   getNotifPrefsOverride,
   isChannelMuted,
   isServerMuted,
