@@ -43,9 +43,14 @@ const Notifications = memo(() => {
   );
 
   // One subscribe link per distinct ntfy instance the connected servers use
-  // (usually just one: ntfy.sh).
+  // (usually just one: ntfy.sh). Webhook-method servers deliver through the
+  // admin's own infrastructure — nothing for the user to subscribe to.
   const ntfyServers = Array.from(
-    new Set(pushRegistrations.map((r) => r.ntfyServerUrl))
+    new Set(
+      pushRegistrations
+        .map((r) => r.ntfyServerUrl)
+        .filter((url): url is string => !!url)
+    )
   );
 
   return (

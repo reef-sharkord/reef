@@ -223,28 +223,44 @@ export async function onLoad(ctx) {
       defaultValue: ''
     },
     {
-      key: 'pushEnabled',
-      name: 'Enable push notifications (ntfy)',
+      key: 'pushMethod',
+      name: 'Push method',
       description:
-        'Notify offline REEF mobile users about DMs and @mentions through ntfy (open source, no Google services). Users subscribe to their private topic in the ntfy app; see the README.',
-      type: 'boolean',
-      defaultValue: false
+        'How to notify offline REEF mobile users about DMs and @mentions (no Google services, ever). "off" = no push (in-app notifications still work). "ntfy" = publish to each user\'s private topic on the ntfy server below (easiest — users install the free ntfy app once). "webhook" = POST JSON {topic, title, body} to your own endpoint (Gotify, UnifiedPush bridge, ...). See the README for setup guides.',
+      type: 'string',
+      defaultValue: 'off'
     },
     {
       key: 'ntfyServerUrl',
       name: 'ntfy server URL',
       description:
-        'The ntfy instance to publish through. The public https://ntfy.sh works out of the box; self-hosters point this at their own instance.',
+        'For the "ntfy" method: the ntfy instance to publish through. The public https://ntfy.sh works out of the box; self-hosters point this at their own instance (recommended for privacy).',
       type: 'string',
       defaultValue: 'https://ntfy.sh'
     },
     {
-      key: 'ntfyToken',
-      name: 'ntfy access token',
+      key: 'webhookUrl',
+      name: 'Push webhook URL',
       description:
-        'Optional Bearer token, only needed if your ntfy instance requires auth to publish. Kept server-side.',
+        'For the "webhook" method: your endpoint. The plugin POSTs JSON {topic, title, body} for every push.',
       type: 'string',
       defaultValue: ''
+    },
+    {
+      key: 'pushAuthToken',
+      name: 'Push auth token',
+      description:
+        'Optional Bearer token sent with every push publish — for ntfy instances or webhooks that require auth. Kept server-side.',
+      type: 'string',
+      defaultValue: ''
+    },
+    {
+      key: 'pushIncludeText',
+      name: 'Include message text in pushes',
+      description:
+        'Off (default): pushes say who wrote and where, but not what — the push relay (e.g. the public ntfy.sh) can read everything passing through it. Turn on if you self-host the relay or accept that trade-off.',
+      type: 'boolean',
+      defaultValue: false
     }
   ]);
 
@@ -265,8 +281,17 @@ export async function onLoad(ctx) {
         payload && payload.topic
       );
 
-      // The client needs the same ntfy instance for its subscribe link.
-      return { ok, ntfyServerUrl: String(settings.get('ntfyServerUrl')) };
+      // With the ntfy method the client shows a subscribe link and needs the
+      // same ntfy instance; with a webhook the admin's own infra delivers, so
+      // there is nothing for the user to subscribe to.
+      return {
+        ok,
+        method: push.method(),
+        ntfyServerUrl:
+          push.method() === 'ntfy'
+            ? String(settings.get('ntfyServerUrl'))
+            : undefined
+      };
     }
   });
 

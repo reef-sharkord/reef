@@ -22,7 +22,9 @@ import { getConnection, getRailServers } from '@/lib/connections';
 export type TPushRegistration = {
   host: string;
   serverName: string;
-  ntfyServerUrl: string;
+  // set only for the ntfy method — webhook servers deliver through the
+  // admin's own infrastructure, so there is nothing to subscribe to
+  ntfyServerUrl?: string;
 };
 
 // host -> registration result for this session (drives the settings UI).
@@ -67,6 +69,7 @@ const getOrCreatePushTopic = (): string => {
 
 type RegisterResponse = {
   ok?: boolean;
+  method?: string;
   ntfyServerUrl?: string;
 };
 
@@ -97,7 +100,10 @@ const registerPushTopicWithServers = async (): Promise<void> => {
         registrations.set(server.host, {
           host: server.host,
           serverName: server.name,
-          ntfyServerUrl: res.ntfyServerUrl || 'https://ntfy.sh'
+          ntfyServerUrl:
+            res.method === 'ntfy'
+              ? res.ntfyServerUrl || 'https://ntfy.sh'
+              : undefined
         });
         notify();
       }

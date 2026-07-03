@@ -17,5 +17,8 @@
 /experiments
 .direnv/
 
+# Gradle output of the Capacitor plugin (generated during APK builds)
+/mobile/plugins/background-connection/android/build
+
 # Local release staging (assets uploaded to GitHub Releases)
 /release-assets

@@ -71,24 +71,52 @@ most relays can be adapted.
 - **Mail from address** — sender the relay may send as.
 - **Mail relay API key** — required for the feature to appear in clients.
 
-### Push notifications (ntfy — no Google services)
-Notifies **offline** REEF mobile users about **DMs** and **@mentions** through
-[ntfy](https://ntfy.sh), the open-source pub/sub notification service. No
-Firebase, no accounts: each REEF app generates a private random topic (the
-topic name is the secret) and registers it via the `registerPushTopic` action;
-the plugin publishes to that topic and the user's ntfy app shows the
-notification. Online users are skipped — their running REEF app already
-notifies locally.
+### Push notifications (no Google services, ever)
+Notifies **offline** REEF mobile users about **DMs** and **@mentions**. REEF
+deliberately uses no Firebase/FCM, so how pushes reach phones is the server
+operator's choice — the **Push method** setting:
 
-Users need the free **ntfy app** (Play Store / F-Droid) and to tap
-"Subscribe in ntfy" in REEF's notification settings once.
+| Method | What happens | Best for |
+|---|---|---|
+| `off` *(default)* | No push. Users with the REEF app running (even backgrounded) still get normal notifications. | Servers that don't want any third party involved. |
+| `ntfy` | The plugin publishes to each user's **private random topic** on an [ntfy](https://ntfy.sh) server. Users install the free ntfy app once and subscribe with one tap from REEF's settings. | Easiest working push. Public `ntfy.sh` needs zero setup; self-hosting ntfy keeps everything on your infra. |
+| `webhook` | The plugin POSTs JSON `{topic, title, body}` to your own endpoint for every push. | Self-hosters with existing infra (Gotify, a UnifiedPush bridge, home-grown relays). Delivery to phones is then your bridge's job. |
+
+**How it works (both methods):** each REEF mobile app generates a private
+random topic (128 bits — the topic name is the only secret) and registers it
+over the authenticated connection via the `registerPushTopic` action. When a
+DM or @mention lands for a user whose REEF app looks *offline* (no reef
+action calls for ~3 minutes), the plugin pushes to their topic. Users with a
+live app are skipped — their app already notifies locally, so no doubles.
+
+**Privacy:** by default pushes contain **who wrote and where, never the
+message text** — whatever relay carries the push (e.g. the public ntfy.sh)
+can read what passes through it. The **Include message text in pushes**
+toggle opts in to full previews; sensible if you self-host the relay.
+
+**Admin setup — ntfy (5 minutes):**
+1. Set **Push method** to `ntfy`. Done, if you're fine with the public
+   `ntfy.sh` relay.
+2. (Recommended for privacy) [Self-host ntfy](https://docs.ntfy.sh/install/)
+   and put your instance in **ntfy server URL**. If it requires auth to
+   publish, create an access token and paste it into **Push auth token**.
+3. Tell your users: install the **ntfy app** (Play Store / F-Droid), then in
+   REEF go to **Settings → Notifications → "Subscribe in ntfy"** (appears
+   automatically on Android once the server offers push).
+
+**Admin setup — webhook:**
+1. Set **Push method** to `webhook` and your endpoint in **Push webhook URL**
+   (optional Bearer auth via **Push auth token**).
+2. Your endpoint receives `{topic, title, body}` per push; route `topic` to
+   the right device however your infra does that (each user's REEF app knows
+   its topic; you'll need your own way to enroll devices).
 
 **Settings**
-- **Enable push notifications (ntfy)** — default off.
-- **ntfy server URL** — default `https://ntfy.sh` (works out of the box);
-  self-hosters point this at their own instance.
-- **ntfy access token** — optional, only for instances that require auth to
-  publish.
+- **Push method** — `off` (default) / `ntfy` / `webhook`.
+- **ntfy server URL** — default `https://ntfy.sh`.
+- **Push webhook URL** — required for the webhook method.
+- **Push auth token** — optional Bearer token for either method.
+- **Include message text in pushes** — default off (see Privacy above).
 
 ## Install
 

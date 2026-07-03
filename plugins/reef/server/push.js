@@ -1,22 +1,25 @@
-// REEF push notifications via ntfy (https://ntfy.sh) — deliberately NO
-// Firebase / Google services.
+// REEF push notifications — deliberately NO Firebase / Google services.
 //
-// How it works: each REEF mobile app generates a private random ntfy topic and
+// How it works: each REEF mobile app generates a private random topic and
 // registers it here via the `registerPushTopic` action. When a message that
 // concerns an *offline* user lands (a DM, or a channel message that @mentions
-// them), the plugin POSTs a notification to their topic on the configured ntfy
-// server; the ntfy Android app (subscribed to that topic) displays it. Online
-// users are skipped — their running REEF app already shows a local
+// them), the plugin delivers a notification for that topic via the
+// admin-chosen method (the `pushMethod` setting):
+//   - 'ntfy'    POST to `<ntfyServerUrl>/<topic>` — the ntfy Android app
+//               (subscribed to the topic) displays it. ntfy is open source
+//               and self-hostable; the public ntfy.sh works with no account.
+//   - 'webhook' POST JSON { topic, title, body } to `webhookUrl` — a generic
+//               bridge for self-hosters (Gotify, a UnifiedPush gateway, ...).
+//   - 'off'     (default) no push; local notifications from the live app
+//               still work.
+// Online users are skipped — their running REEF app already shows a local
 // notification, so they'd get doubles.
 //
-// ntfy is open source and self-hostable: the default server is the public
-// ntfy.sh (no account needed; topic names are the only secret), and operators
-// can point the plugin at their own instance + access token instead.
+// Privacy: message TEXT is only included when the admin opts in
+// (`pushIncludeText`) — by default pushes say who/where but not what, because
+// the push relay (e.g. the public ntfy.sh) can read what passes through it.
 //
-// Topics persist in push-topics.json next to the plugin. Online-ness is
-// tracked from the SDK's user:joined / user:left events (users connected from
-// before the plugin loaded are treated as offline until their next session —
-// worst case they briefly get both a push and a local notification).
+// Topics persist in push-topics.json next to the plugin.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -103,7 +106,17 @@ export const createPush = (ctx, settings) => {
     Date.now() - (lastSeen.get(userId) || 0) < ONLINE_TTL_MS;
 
   // ---- sending ---------------------------------------------------------------
-  const available = () => !!settings.get('pushEnabled');
+  const method = () => {
+    const value = String(settings.get('pushMethod') || 'off')
+      .trim()
+      .toLowerCase();
+
+    return value === 'ntfy' || value === 'webhook' ? value : 'off';
+  };
+
+  const available = () =>
+    method() === 'ntfy' ||
+    (method() === 'webhook' && !!settings.get('webhookUrl'));
 
   const ntfyBase = () =>
     String(settings.get('ntfyServerUrl') || 'https://ntfy.sh').replace(
@@ -111,34 +124,49 @@ export const createPush = (ctx, settings) => {
       ''
     );
 
+  const authHeader = () => {
+    const token = String(settings.get('pushAuthToken') || '');
+
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  const publish = async (topic, title, body) => {
+    if (method() === 'webhook') {
+      const res = await fetch(String(settings.get('webhookUrl')), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ topic, title, body }),
+        signal: AbortSignal.timeout(NTFY_TIMEOUT_MS)
+      });
+
+      return res;
+    }
+
+    return fetch(`${ntfyBase()}/${topic}`, {
+      method: 'POST',
+      headers: {
+        Title: title.slice(0, 200),
+        Priority: 'default',
+        Tags: 'speech_balloon',
+        ...authHeader()
+      },
+      body,
+      signal: AbortSignal.timeout(NTFY_TIMEOUT_MS)
+    });
+  };
+
   const sendToUser = async (userId, title, body) => {
     const topics = registry[userId] || [];
 
     for (const entry of topics) {
       try {
-        const headers = {
-          Title: title.slice(0, 200),
-          Priority: 'default',
-          Tags: 'speech_balloon'
-        };
-        const token = String(settings.get('ntfyToken') || '');
-
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
-        }
-
-        const res = await fetch(`${ntfyBase()}/${entry.topic}`, {
-          method: 'POST',
-          headers,
-          body,
-          signal: AbortSignal.timeout(NTFY_TIMEOUT_MS)
-        });
+        const res = await publish(entry.topic, title, body);
 
         if (!res.ok) {
-          ctx.error(`[push] ntfy publish failed: HTTP ${res.status}`);
+          ctx.error(`[push] ${method()} publish failed: HTTP ${res.status}`);
         }
       } catch (error) {
-        ctx.error('[push] ntfy publish error', error);
+        ctx.error(`[push] ${method()} publish error`, error);
       }
     }
   };
@@ -189,10 +217,12 @@ export const createPush = (ctx, settings) => {
       // keep the fallback name
     }
 
-    const body =
-      String(payload.textContent || '')
-        .trim()
-        .slice(0, BODY_MAX) || 'Sent you a message';
+    // Message text is opt-in: whatever relay carries the push (e.g. the
+    // public ntfy.sh) can read it, so default to who/where without the what.
+    const includeText = !!settings.get('pushIncludeText');
+    const text = String(payload.textContent || '')
+      .trim()
+      .slice(0, BODY_MAX);
 
     let channel = null;
 
@@ -206,6 +236,8 @@ export const createPush = (ctx, settings) => {
     touch(payload.userId);
 
     if (channel && channel.isDm) {
+      const body = includeText && text ? text : 'New direct message';
+
       for (const userId of dmRecipients(channel.name, payload.userId)) {
         if (!isLikelyOnline(userId)) {
           await sendToUser(userId, `${senderName} (DM)`, body);
@@ -217,6 +249,7 @@ export const createPush = (ctx, settings) => {
 
     const channelLabel =
       channel && channel.name ? `#${channel.name}` : 'a channel';
+    const body = includeText && text ? text : 'You were mentioned';
 
     for (const userId of mentionedUserIds(payload.content)) {
       if (userId !== payload.userId && !isLikelyOnline(userId)) {
@@ -231,6 +264,7 @@ export const createPush = (ctx, settings) => {
 
   return {
     available,
+    method,
     registerTopic,
     unregisterTopic,
     onMessageCreated,
