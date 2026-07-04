@@ -1,8 +1,33 @@
+import { getActiveHost, getTokenForHost } from '@/lib/connections';
 import { UploadHeaders, type TTempFile } from '@sharkord/shared';
 import i18next from 'i18next';
 import { toast } from 'sonner';
-import { getUrlFromServer } from './get-file-url';
+import {
+  getHostFromServer,
+  getUrlForHost,
+  getUrlFromServer
+} from './get-file-url';
 import { getSessionStorageItem, SessionStorageKey } from './storage';
+
+// Uploads are plain HTTP, so they must explicitly target the ACTIVE server
+// with ITS token. The old behaviour — window.location's origin + the browser
+// session token — broke every upload in the native shells (the origin is the
+// app itself) and on any rail server (wrong host and/or wrong token).
+const getUploadTarget = () => {
+  const activeHost = getActiveHost();
+
+  if (activeHost && activeHost !== getHostFromServer()) {
+    return {
+      url: getUrlForHost(activeHost),
+      token: getTokenForHost(activeHost) ?? ''
+    };
+  }
+
+  return {
+    url: getUrlFromServer(),
+    token: getSessionStorageItem(SessionStorageKey.TOKEN) ?? ''
+  };
+};
 
 const getSafeFileName = (name: string) => {
   return (
@@ -33,7 +58,7 @@ type TUploadFileOptions = {
 };
 
 const uploadFile = async (file: File, options?: TUploadFileOptions) => {
-  const url = getUrlFromServer();
+  const { url, token } = getUploadTarget();
 
   return new Promise<TTempFile | undefined>((resolve) => {
     const xhr = new XMLHttpRequest();
@@ -46,10 +71,7 @@ const uploadFile = async (file: File, options?: TUploadFileOptions) => {
       UploadHeaders.ORIGINAL_NAME,
       getSafeFileName(file.name)
     );
-    xhr.setRequestHeader(
-      UploadHeaders.TOKEN,
-      getSessionStorageItem(SessionStorageKey.TOKEN) ?? ''
-    );
+    xhr.setRequestHeader(UploadHeaders.TOKEN, token);
 
     if (options?.onProgress) {
       xhr.upload.addEventListener('progress', (e) => {

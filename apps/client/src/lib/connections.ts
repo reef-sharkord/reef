@@ -159,6 +159,9 @@ const setToken = (host: string, token: string) => {
   tokens.set(host, token);
 };
 
+/** The auth token held for `host`, if any (used by per-host HTTP uploads). */
+const getTokenForHost = (host: string): string | undefined => tokens.get(host);
+
 // ---- lifecycle ----------------------------------------------------------------
 
 const buildWsUrl = (host: string) => {
@@ -509,6 +512,7 @@ export {
   getHostForStore,
   getRailServers,
   getResumeTarget,
+  getTokenForHost,
   openConnection,
   setActiveHost,
   setConnectionMeta,

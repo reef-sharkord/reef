@@ -1,8 +1,13 @@
 import { RoleBadge } from '@/components/role-badge';
 import { UserAvatar } from '@/components/user-avatar';
 import { requestConfirmation } from '@/features/dialogs/actions';
-import { getUrlFromServer } from '@/helpers/get-file-url';
+import {
+  getHostFromServer,
+  getUrlForHost,
+  getUrlFromServer
+} from '@/helpers/get-file-url';
 import { useDateLocale } from '@/hooks/use-date-locale';
+import { getActiveHost } from '@/lib/connections';
 import { getTRPCClient } from '@/lib/trpc';
 import { cn } from '@/lib/utils';
 import type { TJoinedInvite } from '@sharkord/shared';
@@ -33,7 +38,15 @@ const TableInvite = memo(({ invite, refetch }: TTableInviteProps) => {
   const isMaxUsesReached = invite.maxUses && invite.uses >= invite.maxUses;
 
   const handleCopyCode = useCallback(() => {
-    const inviteUrl = `${getUrlFromServer()}/?invite=${invite.code}`;
+    // Point the invite at the ACTIVE server, not window.location — in the
+    // native shells the latter is the app itself (a useless localhost link).
+    const activeHost = getActiveHost();
+    const base =
+      activeHost && activeHost !== getHostFromServer()
+        ? getUrlForHost(activeHost)
+        : getUrlFromServer();
+    const inviteUrl = `${base}/?invite=${invite.code}`;
+
     navigator.clipboard.writeText(inviteUrl);
     toast.success(t('inviteCopied'));
   }, [invite.code, t]);
