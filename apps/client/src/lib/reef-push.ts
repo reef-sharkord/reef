@@ -1,4 +1,5 @@
 import { reefFeaturesSelector } from '@/features/server/selectors';
+import { getNativePlugin } from '@/helpers/native';
 import {
   getLocalStorageItem,
   LocalStorageKey,
@@ -7,16 +8,18 @@ import {
 import { getConnection, getRailServers } from '@/lib/connections';
 
 /**
- * Push notifications via ntfy (https://ntfy.sh) — deliberately NO
- * Firebase/Google services. This device generates one private random ntfy
- * topic and registers it with every connected server whose reef plugin has
- * push enabled; the plugin publishes DM/@mention notifications to that topic
- * for *offline* users, and the ntfy app (subscribed to the topic) displays
- * them. While the app is alive, local notifications from the live socket
- * cover everything instead.
- *
- * The topic name is the only secret — it's 128 bits of randomness, never
- * shown to other users, and registered over the authenticated tRPC channel.
+ * Push notifications — the SERVER admin picks the delivery method (reef
+ * plugin `pushMethod`), and this module registers whatever handle that method
+ * needs with each connected push-enabled server:
+ *  - ntfy/webhook: one private random topic per device (128 bits, never shown
+ *    to other users, registered over the authenticated tRPC channel). For
+ *    ntfy the user subscribes once in the ntfy app.
+ *  - fcm: the device's Firebase registration token — only obtainable when the
+ *    APK was built with a google-services.json (official REEF builds are
+ *    not; this path exists for self-hosters who build their own app against
+ *    their own Firebase project).
+ * While the app is alive, local notifications from the live socket cover
+ * everything; push is for the killed-app case.
  */
 
 export type TPushRegistration = {
@@ -67,15 +70,41 @@ const getOrCreatePushTopic = (): string => {
   return topic;
 };
 
-type RegisterResponse = {
+type PushInfoResponse = {
   ok?: boolean;
   method?: string;
   ntfyServerUrl?: string;
 };
 
+type RegisterResponse = {
+  ok?: boolean;
+};
+
+// The FCM device token, if this build can produce one (needs the Firebase
+// messaging plugin compiled in AND a google-services.json baked into the APK).
+const getFcmToken = async (): Promise<string | undefined> => {
+  const messaging = getNativePlugin('FirebaseMessaging');
+
+  if (!messaging) {
+    return undefined;
+  }
+
+  try {
+    await messaging.requestPermissions?.();
+
+    const result = (await messaging.getToken?.()) as
+      | { token?: string }
+      | undefined;
+
+    return result?.token || undefined;
+  } catch {
+    return undefined; // no Firebase config in this build
+  }
+};
+
 /**
- * Register this device's topic with every connected push-enabled server that
- * hasn't been registered this session. Safe to call repeatedly.
+ * Register this device's push handle with every connected push-enabled server
+ * that hasn't been registered this session. Safe to call repeatedly.
  */
 const registerPushTopicWithServers = async (): Promise<void> => {
   for (const server of getRailServers()) {
@@ -90,10 +119,27 @@ const registerPushTopicWithServers = async (): Promise<void> => {
     }
 
     try {
+      // Ask the server which method it uses — it decides what we register.
+      const info = (await conn.trpc.plugins.executeAction.mutate({
+        pluginId: 'reef',
+        actionName: 'getPushInfo'
+      })) as PushInfoResponse | undefined;
+
+      if (!info?.ok || !info.method || info.method === 'off') {
+        continue;
+      }
+
+      const topic =
+        info.method === 'fcm' ? await getFcmToken() : getOrCreatePushTopic();
+
+      if (!topic) {
+        continue; // fcm server but this build has no Firebase config
+      }
+
       const res = (await conn.trpc.plugins.executeAction.mutate({
         pluginId: 'reef',
         actionName: 'registerPushTopic',
-        payload: { topic: getOrCreatePushTopic() }
+        payload: { topic }
       })) as RegisterResponse | undefined;
 
       if (res?.ok) {
@@ -101,8 +147,8 @@ const registerPushTopicWithServers = async (): Promise<void> => {
           host: server.host,
           serverName: server.name,
           ntfyServerUrl:
-            res.method === 'ntfy'
-              ? res.ntfyServerUrl || 'https://ntfy.sh'
+            info.method === 'ntfy'
+              ? info.ntfyServerUrl || 'https://ntfy.sh'
               : undefined
         });
         notify();

@@ -81,6 +81,7 @@ operator's choice — the **Push method** setting:
 | `off` *(default)* | No push. Users with the REEF app running (even backgrounded) still get normal notifications. | Servers that don't want any third party involved. |
 | `ntfy` | The plugin publishes to each user's **private random topic** on an [ntfy](https://ntfy.sh) server. Users install the free ntfy app once and subscribe with one tap from REEF's settings. | Easiest working push. Public `ntfy.sh` needs zero setup; self-hosting ntfy keeps everything on your infra. |
 | `webhook` | The plugin POSTs JSON `{topic, title, body}` to your own endpoint for every push. | Self-hosters with existing infra (Gotify, a UnifiedPush bridge, home-grown relays). Delivery to phones is then your bridge's job. |
+| `fcm` | The plugin sends through **Firebase Cloud Messaging** using your service-account key (HTTP v1; no Firebase SDK on the server). No extra app on phones. | Communities that build **their own REEF APK**: FCM device tokens only exist for apps built with your Firebase project's `google-services.json`. Official REEF builds ship Firebase-free, so they can't receive FCM. |
 
 **How it works (both methods):** each REEF mobile app generates a private
 random topic (128 bits — the topic name is the only secret) and registers it
@@ -111,11 +112,23 @@ toggle opts in to full previews; sensible if you self-host the relay.
    the right device however your infra does that (each user's REEF app knows
    its topic; you'll need your own way to enroll devices).
 
+**Admin setup — fcm (custom APK builds only):**
+1. Create a Firebase project; add an Android app with your APK's package id
+   and download its `google-services.json` into `mobile/` **before building
+   your APK** (the build script wires it in automatically).
+2. In the Firebase console: **Project settings → Service accounts → Generate
+   new private key**; paste the whole JSON into **Firebase service account
+   JSON** and set **Push method** to `fcm`.
+3. REEF apps built with that config register their FCM device token
+   automatically — users install nothing extra. Apps *without* your config
+   (including official REEF builds) simply can't receive FCM pushes.
+
 **Settings**
-- **Push method** — `off` (default) / `ntfy` / `webhook`.
+- **Push method** — `off` (default) / `ntfy` / `webhook` / `fcm`.
 - **ntfy server URL** — default `https://ntfy.sh`.
 - **Push webhook URL** — required for the webhook method.
-- **Push auth token** — optional Bearer token for either method.
+- **Firebase service account JSON** — required for the fcm method.
+- **Push auth token** — optional Bearer token for ntfy/webhook.
 - **Include message text in pushes** — default off (see Privacy above).
 
 ## Install

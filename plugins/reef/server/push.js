@@ -1,15 +1,22 @@
-// REEF push notifications — deliberately NO Firebase / Google services.
+// REEF push notifications — never *requires* Firebase/Google services; the
+// server admin picks the delivery method.
 //
-// How it works: each REEF mobile app generates a private random topic and
-// registers it here via the `registerPushTopic` action. When a message that
+// How it works: each REEF mobile app registers a per-device handle here via
+// the `registerPushTopic` action — a private random topic for ntfy/webhook,
+// or the device's FCM registration token for fcm. When a message that
 // concerns an *offline* user lands (a DM, or a channel message that @mentions
-// them), the plugin delivers a notification for that topic via the
-// admin-chosen method (the `pushMethod` setting):
+// them), the plugin delivers a notification via the admin-chosen method (the
+// `pushMethod` setting):
 //   - 'ntfy'    POST to `<ntfyServerUrl>/<topic>` — the ntfy Android app
 //               (subscribed to the topic) displays it. ntfy is open source
 //               and self-hostable; the public ntfy.sh works with no account.
 //   - 'webhook' POST JSON { topic, title, body } to `webhookUrl` — a generic
 //               bridge for self-hosters (Gotify, a UnifiedPush gateway, ...).
+//   - 'fcm'     Firebase Cloud Messaging HTTP v1, authenticated with the
+//               admin's service-account JSON (no firebase SDK dependency —
+//               the plugin mints its own OAuth tokens). Only works for REEF
+//               apps built with the SAME Firebase project's
+//               google-services.json; official REEF builds ship without one.
 //   - 'off'     (default) no push; local notifications from the live app
 //               still work.
 // Online users are skipped — their running REEF app already shows a local
@@ -21,6 +28,7 @@
 //
 // Topics persist in push-topics.json next to the plugin.
 
+import { createSign } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -56,7 +64,15 @@ export const createPush = (ctx, settings) => {
   };
 
   const registerTopic = (userId, topic) => {
-    if (!userId || typeof topic !== 'string' || !TOPIC_RE.test(topic)) {
+    // ntfy/webhook handles are our own random topics; FCM registration
+    // tokens are longer and contain ':' — validate per method.
+    const valid =
+      typeof topic === 'string' &&
+      (method() === 'fcm'
+        ? topic.length > 0 && topic.length <= 4096 && !/\s/.test(topic)
+        : TOPIC_RE.test(topic));
+
+    if (!userId || !valid) {
       return false;
     }
 
@@ -111,12 +127,101 @@ export const createPush = (ctx, settings) => {
       .trim()
       .toLowerCase();
 
-    return value === 'ntfy' || value === 'webhook' ? value : 'off';
+    return value === 'ntfy' || value === 'webhook' || value === 'fcm'
+      ? value
+      : 'off';
+  };
+
+  // ---- Firebase Cloud Messaging (only when the admin chose it) --------------
+  const getServiceAccount = () => {
+    try {
+      const raw = String(settings.get('firebaseServiceAccount') || '');
+
+      if (!raw) {
+        return null;
+      }
+
+      const parsed = JSON.parse(raw);
+
+      return parsed.client_email && parsed.private_key && parsed.project_id
+        ? parsed
+        : null;
+    } catch {
+      return null;
+    }
+  };
+
+  let cachedAccessToken = null; // { token, expiresAt }
+
+  const getFcmAccessToken = async () => {
+    if (cachedAccessToken && cachedAccessToken.expiresAt > Date.now() + 60000) {
+      return cachedAccessToken.token;
+    }
+
+    const account = getServiceAccount();
+
+    if (!account) {
+      throw new Error('no Firebase service account configured');
+    }
+
+    const base64url = (input) => Buffer.from(input).toString('base64url');
+    const now = Math.floor(Date.now() / 1000);
+    const header = base64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+    const claims = base64url(
+      JSON.stringify({
+        iss: account.client_email,
+        scope: 'https://www.googleapis.com/auth/firebase.messaging',
+        aud: 'https://oauth2.googleapis.com/token',
+        iat: now,
+        exp: now + 3600
+      })
+    );
+    const signer = createSign('RSA-SHA256');
+
+    signer.update(`${header}.${claims}`);
+
+    const signature = signer.sign(account.private_key, 'base64url');
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion: `${header}.${claims}.${signature}`
+      }),
+      signal: AbortSignal.timeout(NTFY_TIMEOUT_MS)
+    });
+
+    if (!res.ok) {
+      throw new Error(`FCM token exchange failed: HTTP ${res.status}`);
+    }
+
+    const json = await res.json();
+
+    cachedAccessToken = {
+      token: json.access_token,
+      expiresAt: Date.now() + (json.expires_in || 3600) * 1000
+    };
+
+    return cachedAccessToken.token;
+  };
+
+  // Devices FCM reports as gone get pruned so we stop paying for dead sends.
+  const dropDeadToken = (token) => {
+    for (const userId of Object.keys(registry)) {
+      registry[userId] = registry[userId].filter((t) => t.topic !== token);
+
+      if (registry[userId].length === 0) {
+        delete registry[userId];
+      }
+    }
+
+    persist();
   };
 
   const available = () =>
     method() === 'ntfy' ||
-    (method() === 'webhook' && !!settings.get('webhookUrl'));
+    (method() === 'webhook' && !!settings.get('webhookUrl')) ||
+    (method() === 'fcm' && !!getServiceAccount());
 
   const ntfyBase = () =>
     String(settings.get('ntfyServerUrl') || 'https://ntfy.sh').replace(
@@ -132,14 +237,32 @@ export const createPush = (ctx, settings) => {
 
   const publish = async (topic, title, body) => {
     if (method() === 'webhook') {
-      const res = await fetch(String(settings.get('webhookUrl')), {
+      return fetch(String(settings.get('webhookUrl')), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeader() },
         body: JSON.stringify({ topic, title, body }),
         signal: AbortSignal.timeout(NTFY_TIMEOUT_MS)
       });
+    }
 
-      return res;
+    if (method() === 'fcm') {
+      const account = getServiceAccount();
+      const accessToken = await getFcmAccessToken();
+
+      return fetch(
+        `https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({
+            message: { token: topic, notification: { title, body } }
+          }),
+          signal: AbortSignal.timeout(NTFY_TIMEOUT_MS)
+        }
+      );
     }
 
     return fetch(`${ntfyBase()}/${topic}`, {
@@ -162,7 +285,22 @@ export const createPush = (ctx, settings) => {
       try {
         const res = await publish(entry.topic, title, body);
 
-        if (!res.ok) {
+        if (res.ok) {
+          continue;
+        }
+
+        // FCM tells us when a device token is dead — prune it.
+        if (method() === 'fcm' && (res.status === 404 || res.status === 410)) {
+          dropDeadToken(entry.topic);
+        } else if (method() === 'fcm') {
+          const text = await res.text();
+
+          if (text.includes('UNREGISTERED')) {
+            dropDeadToken(entry.topic);
+          } else {
+            ctx.error(`[push] fcm publish failed: HTTP ${res.status}`);
+          }
+        } else {
           ctx.error(`[push] ${method()} publish failed: HTTP ${res.status}`);
         }
       } catch (error) {

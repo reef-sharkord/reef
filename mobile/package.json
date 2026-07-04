@@ -12,6 +12,7 @@
     "build:apk": "npm run sync && cd android && ./gradlew assembleRelease"
   },
   "dependencies": {
+    "@capacitor-firebase/messaging": "^6.0.0",
     "@capacitor/android": "^6.2.0",
     "@capacitor/core": "^6.2.0",
     "@capacitor/local-notifications": "^6.1.0",

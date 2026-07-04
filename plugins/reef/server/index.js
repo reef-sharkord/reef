@@ -226,9 +226,17 @@ export async function onLoad(ctx) {
       key: 'pushMethod',
       name: 'Push method',
       description:
-        'How to notify offline REEF mobile users about DMs and @mentions (no Google services, ever). "off" = no push (in-app notifications still work). "ntfy" = publish to each user\'s private topic on the ntfy server below (easiest — users install the free ntfy app once). "webhook" = POST JSON {topic, title, body} to your own endpoint (Gotify, UnifiedPush bridge, ...). See the README for setup guides.',
+        'How to notify offline REEF mobile users about DMs and @mentions — your choice, nothing is ever forced. "off" = no push (in-app notifications still work). "ntfy" = publish to each user\'s private topic on the ntfy server below (easiest — users install the free ntfy app once). "webhook" = POST JSON {topic, title, body} to your own endpoint (Gotify, UnifiedPush bridge, ...). "fcm" = Firebase Cloud Messaging with your service-account JSON below (only works for REEF apps built with your Firebase project\'s google-services.json — official builds are not). See the README for setup guides.',
       type: 'string',
       defaultValue: 'off'
+    },
+    {
+      key: 'firebaseServiceAccount',
+      name: 'Firebase service account JSON',
+      description:
+        'For the "fcm" method: paste the entire service-account key JSON from your Firebase project (Project settings → Service accounts → Generate new private key). Kept server-side.',
+      type: 'string',
+      defaultValue: ''
     },
     {
       key: 'ntfyServerUrl',
@@ -264,8 +272,26 @@ export async function onLoad(ctx) {
     }
   ]);
 
-  // --- push notifications (ntfy) ---------------------------------------------
+  // --- push notifications (method chosen by the admin) ------------------------
   const push = createPush(ctx, settings);
+
+  ctx.actions.register({
+    name: 'getPushInfo',
+    description:
+      'Which push method this server uses, so clients know what to register (an ntfy/webhook topic vs. an FCM device token).',
+    execute: async (invoker) => {
+      push.touch(invoker && invoker.userId);
+
+      return {
+        ok: true,
+        method: push.available() ? push.method() : 'off',
+        ntfyServerUrl:
+          push.method() === 'ntfy'
+            ? String(settings.get('ntfyServerUrl'))
+            : undefined
+      };
+    }
+  });
 
   ctx.actions.register({
     name: 'registerPushTopic',
