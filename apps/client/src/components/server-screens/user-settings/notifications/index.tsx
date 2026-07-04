@@ -29,6 +29,8 @@ import {
 import { BellRing } from 'lucide-react';
 import { memo, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DndSettings } from './dnd-settings';
+import { SoundSettings } from './sound-settings';
 
 const Notifications = memo(() => {
   const { t } = useTranslation('settings');
@@ -54,70 +56,78 @@ const Notifications = memo(() => {
   );
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('notificationsTitle')}</CardTitle>
-        <CardDescription>{t('notificationsDesc')}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Group label={t('allMessagesLabel')} description={t('allMessagesDesc')}>
-          <Switch
-            checked={browserNotifications}
-            onCheckedChange={(value) => setBrowserNotifications(value)}
-          />
-        </Group>
-        <Group
-          label={t('mentionsOnlyLabel')}
-          description={t('mentionsOnlyDesc')}
-        >
-          <Switch
-            checked={browserNotificationsForMentions}
-            onCheckedChange={(value) =>
-              setBrowserNotificationsForMentions(value)
-            }
-          />
-        </Group>
-        <Group
-          label={t('dmNotificationsLabel')}
-          description={t('dmNotificationsDesc')}
-        >
-          <Switch
-            checked={browserNotificationsForDms}
-            onCheckedChange={(value) => setBrowserNotificationsForDms(value)}
-          />
-        </Group>
-        <Group
-          label={t('repliesNotificationsLabel')}
-          description={t('repliesNotificationsDesc')}
-        >
-          <Switch
-            checked={browserNotificationsForReplies}
-            onCheckedChange={(value) =>
-              setBrowserNotificationsForReplies(value)
-            }
-          />
-        </Group>
-
-        {isNativeApp() && ntfyServers.length > 0 && (
-          <Group label={t('ntfyPushLabel')} description={t('ntfyPushDesc')}>
-            <div className="flex flex-col items-end gap-1">
-              {ntfyServers.map((serverUrl) => (
-                <Button key={serverUrl} asChild variant="outline" size="sm">
-                  <a
-                    href={`${serverUrl}/${getOrCreatePushTopic()}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <BellRing className="mr-2 h-4 w-4" />
-                    {t('ntfySubscribeBtn')}
-                  </a>
-                </Button>
-              ))}
-            </div>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('notificationsTitle')}</CardTitle>
+          <CardDescription>{t('notificationsDesc')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Group
+            label={t('allMessagesLabel')}
+            description={t('allMessagesDesc')}
+          >
+            <Switch
+              checked={browserNotifications}
+              onCheckedChange={(value) => setBrowserNotifications(value)}
+            />
           </Group>
-        )}
-      </CardContent>
-    </Card>
+          <Group
+            label={t('mentionsOnlyLabel')}
+            description={t('mentionsOnlyDesc')}
+          >
+            <Switch
+              checked={browserNotificationsForMentions}
+              onCheckedChange={(value) =>
+                setBrowserNotificationsForMentions(value)
+              }
+            />
+          </Group>
+          <Group
+            label={t('dmNotificationsLabel')}
+            description={t('dmNotificationsDesc')}
+          >
+            <Switch
+              checked={browserNotificationsForDms}
+              onCheckedChange={(value) => setBrowserNotificationsForDms(value)}
+            />
+          </Group>
+          <Group
+            label={t('repliesNotificationsLabel')}
+            description={t('repliesNotificationsDesc')}
+          >
+            <Switch
+              checked={browserNotificationsForReplies}
+              onCheckedChange={(value) =>
+                setBrowserNotificationsForReplies(value)
+              }
+            />
+          </Group>
+
+          {isNativeApp() && ntfyServers.length > 0 && (
+            <Group label={t('ntfyPushLabel')} description={t('ntfyPushDesc')}>
+              <div className="flex flex-col items-end gap-1">
+                {ntfyServers.map((serverUrl) => (
+                  <Button key={serverUrl} asChild variant="outline" size="sm">
+                    <a
+                      href={`${serverUrl}/${getOrCreatePushTopic()}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <BellRing className="mr-2 h-4 w-4" />
+                      {t('ntfySubscribeBtn')}
+                    </a>
+                  </Button>
+                ))}
+              </div>
+            </Group>
+          )}
+        </CardContent>
+      </Card>
+
+      <SoundSettings />
+      <DndSettings />
+    </div>
   );
 });
 

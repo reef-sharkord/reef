@@ -1,3 +1,4 @@
+import { getSoundVolumeMultiplier, isSoundEnabled } from '@/lib/sound-prefs';
 import { SoundType } from '../types';
 
 let audioCtx: AudioContext;
@@ -92,7 +93,11 @@ const createOsc = (type: OscillatorType, freq: number) => {
 const createGain = (value = 1) => {
   const gain = getReadyAudioContext().createGain();
 
-  gain.gain.setValueAtTime(value * SOUNDS_VOLUME, now());
+  // user volume (Settings → Notifications → Sounds) scales every sound
+  gain.gain.setValueAtTime(
+    value * SOUNDS_VOLUME * getSoundVolumeMultiplier(),
+    now()
+  );
 
   return gain;
 };
@@ -463,6 +468,11 @@ const getSoundTypes = () => ALL_SOUND_TYPES;
 
 const playSound = async (type: SoundType) => {
   try {
+    // user sound preferences: master toggle, per-group toggles, volume 0
+    if (!isSoundEnabled(type)) {
+      return;
+    }
+
     const ctx = await ensureAudioContextRunning();
 
     if (!ctx) {

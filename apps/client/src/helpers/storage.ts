@@ -46,6 +46,8 @@ export enum LocalStorageKey {
   DND_SETTINGS = 'reef-dnd',
   // This device's private ntfy topic for push notifications (no Firebase).
   NTFY_TOPIC = 'reef-ntfy-topic',
+  // UI sound preferences: master toggle, volume, per-group toggles.
+  SOUND_PREFS = 'reef-sound-prefs',
   // Rail tile order (array of hosts) and per-server local overrides
   // (custom name/color). Client-only personalization. (M8)
   RAIL_ORDER = 'reef-rail-order',

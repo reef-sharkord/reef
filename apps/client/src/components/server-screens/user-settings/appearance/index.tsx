@@ -1,3 +1,4 @@
+import { LanguageSwitcher } from '@/components/language-switcher';
 import { useTheme } from '@/components/theme-provider';
 import {
   ACCENT_PRESETS,
@@ -109,6 +110,10 @@ const Appearance = memo(() => {
             value={[scale]}
             onValueChange={([v]) => chooseScale(v)}
           />
+        </Group>
+
+        <Group label={t('languageLabel')} description={t('languageDesc')}>
+          <LanguageSwitcher />
         </Group>
 
         <Group
