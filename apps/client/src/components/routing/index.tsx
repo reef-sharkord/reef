@@ -15,13 +15,13 @@ import { useRailServers } from '@/hooks/use-connections';
 import { useIsRestoringSavedServers } from '@/lib/boot-state';
 import { getConnection } from '@/lib/connections';
 import { cn } from '@/lib/utils';
+import { BootRestore } from '@/screens/boot-restore';
 import { Connect } from '@/screens/connect';
 import { Disconnected } from '@/screens/disconnected';
 import { LoadingApp } from '@/screens/loading-app';
 import { Reconnecting } from '@/screens/reconnecting';
 import { ServerView } from '@/screens/server-view';
 import { DisconnectCode } from '@sharkord/shared';
-import { Spinner } from '@sharkord/ui';
 import { PanelLeftOpen } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -116,20 +116,18 @@ const Routing = memo(() => {
     }
   }, [activeConnection]);
 
+  // Launch: while the rail is reconnecting saved servers, the boot landing
+  // screen covers EVERYTHING — including the intermediate joins, which make
+  // themselves the active connection and would otherwise flash the login
+  // screen and hop between servers (tester feedback, 2026-07-08). Restoring
+  // is initialized synchronously in boot-state, so even the first render
+  // never flashes Welcome.
+  if (isStandalone() && isRestoringSavedServers) {
+    return <BootRestore />;
+  }
+
   if (!activeConnection) {
     if (isStandalone()) {
-      // Launch: while the rail is reconnecting saved servers, show a boot
-      // loading screen instead of flashing the empty Welcome (the first
-      // server to join becomes active and takes over from here).
-      if (isRestoringSavedServers) {
-        return (
-          <div className="flex h-full flex-col items-center justify-center gap-2">
-            <Spinner size="lg" />
-            <span className="text-xl">{t('connectingServers')}</span>
-          </div>
-        );
-      }
-
       // Native shells have no primary server: show the branded welcome / empty
       // state so the user can add their first server. (M6/M7)
       return <Welcome />;

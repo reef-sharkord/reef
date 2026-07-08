@@ -15,6 +15,7 @@ import {
   setActiveHost,
   setConnectionMeta
 } from '@/lib/connections';
+import { getRailOrder, sortHostsByOrder } from '@/lib/rail-prefs';
 import { fetchReefFeatures } from '@/lib/reef-features';
 import {
   fetchPresences,
@@ -376,7 +377,11 @@ export const reconnectSavedServer = async (
 
   try {
     const url = getUrlForHost(saved.host);
-    const infoResponse = await fetch(`${url}/info`);
+    // Cap the probe so one dead/unreachable server can't hang the whole boot
+    // restore for the OS's TCP timeout (~30s) while the boot screen waits.
+    const infoResponse = await fetch(`${url}/info`, {
+      signal: AbortSignal.timeout(8_000)
+    });
 
     if (!infoResponse.ok) {
       return;
@@ -394,10 +399,12 @@ export const reconnectSavedServer = async (
 let savedServersRestored = false;
 
 /**
- * Restore all saved secondary servers, sequentially, then return focus to the
- * primary. Runs once. Called after the primary's auto-login attempt settles so
- * the primary claims the bootstrap store first and we never interleave joins.
- * (M3)
+ * Restore all saved secondary servers, sequentially in RAIL ORDER (top of the
+ * rail first), then land the user on the primary (browser) or the topmost
+ * connected server (standalone). Runs once. Called after the primary's
+ * auto-login attempt settles so the primary claims the bootstrap store first
+ * and we never interleave joins. The standalone boot landing screen covers
+ * this whole phase and shows each server's progress. (M3, reworked M9)
  */
 export const restoreSavedServers = async () => {
   if (savedServersRestored) {
@@ -407,10 +414,13 @@ export const restoreSavedServers = async () => {
   savedServersRestored = true;
 
   const primaryHost = getHostFromServer();
-  const saved = getSavedServers().filter((s) => s.host !== primaryHost);
+  const saved = sortHostsByOrder(
+    getSavedServers().filter((s) => s.host !== primaryHost),
+    getRailOrder()
+  );
 
-  // Signal the boot phase so the standalone shells can show a loading screen
-  // instead of flashing the empty Welcome while the rail reconnects.
+  // Signal the boot phase so the standalone shells can show the boot landing
+  // screen instead of flashing the empty Welcome while the rail reconnects.
   if (saved.length > 0) {
     setRestoringSavedServers(true);
   }
@@ -419,14 +429,25 @@ export const restoreSavedServers = async () => {
     for (const server of saved) {
       await reconnectSavedServer(server);
     }
+
+    // Land the user deliberately: the primary server if it is connected
+    // (browser), otherwise the topmost connected rail server (standalone) —
+    // never whichever server happened to be restored last.
+    if (getConnection(primaryHost)) {
+      setActiveHost(primaryHost);
+    } else {
+      const topConnected = saved.find((server) => {
+        const conn = getConnection(server.host);
+
+        return conn && conn.status !== 'closed';
+      });
+
+      if (topConnected) {
+        setActiveHost(topConnected.host);
+      }
+    }
   } finally {
     setRestoringSavedServers(false);
-  }
-
-  // land the user on the primary server if it is connected, rather than on
-  // whichever secondary happened to be restored last.
-  if (getConnection(primaryHost)) {
-    setActiveHost(primaryHost);
   }
 };
 

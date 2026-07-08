@@ -6,9 +6,62 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>REEF</title>
+    <style>
+      /* Pre-React boot splash: lives inside #root so React's first render
+         replaces it automatically. Keeps the shells from flashing a blank
+         white page (or unstyled UI) while the bundle loads. */
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: #131416;
+        color: #e6e6e6;
+        font-family: system-ui, sans-serif;
+      }
+      #boot-splash.light {
+        background: #ffffff;
+        color: #1a1a1a;
+      }
+      #boot-splash img {
+        width: 72px;
+        height: 72px;
+        border-radius: 20px;
+        animation: boot-pulse 1.6s ease-in-out infinite;
+      }
+      @keyframes boot-pulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.65;
+          transform: scale(0.94);
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot-splash">
+        <img src="icon-192.png" alt="" />
+        <span style="font-size: 14px; letter-spacing: 0.3em">REEF</span>
+      </div>
+      <script>
+        // Match the user's chosen theme before any framework loads.
+        try {
+          if (localStorage.getItem('vite-ui-theme') === 'light') {
+            document.getElementById('boot-splash').className = 'light';
+          }
+        } catch (e) {
+          /* default dark */
+        }
+      </script>
+    </div>
     <div id="portal"></div>
     <div id="imagePortal"></div>
     <script type="module" src="/src/main.tsx"></script>
