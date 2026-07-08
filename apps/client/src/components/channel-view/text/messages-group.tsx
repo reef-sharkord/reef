@@ -60,7 +60,11 @@ const MessagesGroup = memo(
             className="h-10 w-10"
           />
         ) : (
-          <UserAvatar userId={user!.id} className="h-10 w-10" showUserPopover />
+          <UserAvatar
+            userId={firstMessage.userId}
+            className="h-10 w-10"
+            showUserPopover
+          />
         )}
         <div className="flex min-w-0 flex-col w-full">
           <div className="flex gap-2 items-baseline pl-1 select-none">
