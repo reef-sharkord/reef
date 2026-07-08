@@ -26,6 +26,7 @@ REEF is a fork of [Sharkord](https://github.com/Sharkord/sharkord) focused on th
 - Noise suppression, noise gate, quality controls (from upstream Sharkord)
 
 **Quality of life**
+- **Push notifications without Google** — DMs and @mentions reach your phone even when the app is closed, via [ntfy](https://ntfy.sh) ([setup guide](docs/PUSH_NOTIFICATIONS.md))
 - **GIF picker** (Klipy/Giphy) — searches proxied through the server plugin so API keys stay server-side
 - **Custom status** — short status text visible to other REEF users on the server
 - **In-app bug reports** — users report issues straight to the server operator's email

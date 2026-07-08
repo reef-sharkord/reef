@@ -1,6 +1,11 @@
 import { setAutoJoinLastChannel } from '@/features/app/actions';
 import { useAutoJoinLastChannel } from '@/features/app/hooks';
 import { isDesktop } from '@/helpers/desktop';
+import { isNativeApp } from '@/helpers/native';
+import {
+  setBackgroundConnectionEnabled,
+  useBackgroundConnectionEnabled
+} from '@/lib/background-prefs';
 import {
   Card,
   CardContent,
@@ -18,6 +23,7 @@ import { DesktopStartupSettings } from './desktop-startup-settings';
 const App = memo(() => {
   const { t } = useTranslation('settings');
   const autoJoinLastChannel = useAutoJoinLastChannel();
+  const backgroundConnection = useBackgroundConnectionEnabled();
 
   return (
     <Card>
@@ -35,6 +41,18 @@ const App = memo(() => {
             onCheckedChange={(value) => setAutoJoinLastChannel(value)}
           />
         </Group>
+
+        {isNativeApp() && (
+          <Group
+            label={t('backgroundConnectionLabel')}
+            description={t('backgroundConnectionDesc')}
+          >
+            <Switch
+              checked={backgroundConnection}
+              onCheckedChange={(value) => setBackgroundConnectionEnabled(value)}
+            />
+          </Group>
+        )}
 
         {isDesktop() && <DesktopStartupSettings />}
       </CardContent>

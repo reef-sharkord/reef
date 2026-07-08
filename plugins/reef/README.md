@@ -102,8 +102,10 @@ toggle opts in to full previews; sensible if you self-host the relay.
    and put your instance in **ntfy server URL**. If it requires auth to
    publish, create an access token and paste it into **Push auth token**.
 3. Tell your users: install the **ntfy app** (Play Store / F-Droid), then in
-   REEF go to **Settings → Notifications → "Subscribe in ntfy"** (appears
-   automatically on Android once the server offers push).
+   REEF go to **Settings → Notifications → "Push while REEF is closed"** and
+   tap **Subscribe in ntfy** next to your server. That screen also shows a
+   per-server status explaining anything that's still missing. Full
+   step-by-step + troubleshooting: [docs/PUSH_NOTIFICATIONS.md](../../docs/PUSH_NOTIFICATIONS.md).
 
 **Admin setup — webhook:**
 1. Set **Push method** to `webhook` and your endpoint in **Push webhook URL**

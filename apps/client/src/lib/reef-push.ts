@@ -1,4 +1,4 @@
-import { reefFeaturesSelector } from '@/features/server/selectors';
+import { pluginsMetadataSelector } from '@/features/server/plugins/selectors';
 import { getNativePlugin } from '@/helpers/native';
 import {
   getLocalStorageItem,
@@ -20,17 +20,37 @@ import { getConnection, getRailServers } from '@/lib/connections';
  *    their own Firebase project).
  * While the app is alive, local notifications from the live socket cover
  * everything; push is for the killed-app case.
+ *
+ * Every rail server gets a status — not just the successes — so the settings
+ * UI can always show WHY push isn't working on a server (plugin missing, push
+ * turned off, no USE_PLUGINS permission, …) instead of silently hiding
+ * (tester feedback, 2026-07-08).
  */
+
+export type TPushStatus =
+  // registered with the server; push will be delivered
+  | 'registered'
+  // the server doesn't have the reef plugin installed
+  | 'no-plugin'
+  // reef plugin present but the admin hasn't enabled a push method
+  | 'push-off'
+  // the user's role lacks USE_PLUGINS, so the plugin can't be reached
+  | 'no-permission'
+  // server uses FCM but this build has no Firebase config
+  | 'fcm-unavailable'
+  // unexpected failure — retried on the next tick
+  | 'error';
 
 export type TPushRegistration = {
   host: string;
   serverName: string;
-  // set only for the ntfy method — webhook servers deliver through the
-  // admin's own infrastructure, so there is nothing to subscribe to
+  status: TPushStatus;
+  // set only for successfully registered ntfy servers — webhook servers
+  // deliver through the admin's own infrastructure, nothing to subscribe to
   ntfyServerUrl?: string;
 };
 
-// host -> registration result for this session (drives the settings UI).
+// host -> latest status (drives the settings UI).
 const registrations = new Map<string, TPushRegistration>();
 const listeners = new Set<() => void>();
 let snapshot: TPushRegistration[] = [];
@@ -102,19 +122,57 @@ const getFcmToken = async (): Promise<string | undefined> => {
   }
 };
 
+const setStatus = (
+  host: string,
+  serverName: string,
+  status: TPushStatus,
+  ntfyServerUrl?: string
+) => {
+  const prev = registrations.get(host);
+
+  if (
+    prev?.status === status &&
+    prev.serverName === serverName &&
+    prev.ntfyServerUrl === ntfyServerUrl
+  ) {
+    return;
+  }
+
+  registrations.set(host, { host, serverName, status, ntfyServerUrl });
+  notify();
+};
+
 /**
- * Register this device's push handle with every connected push-enabled server
- * that hasn't been registered this session. Safe to call repeatedly.
+ * Register this device's push handle with every connected server that isn't
+ * registered yet, recording a diagnosable status per server. Safe to call
+ * repeatedly — failures are retried on the caller's next tick.
  */
 const registerPushTopicWithServers = async (): Promise<void> => {
+  const railHosts = new Set<string>();
+
   for (const server of getRailServers()) {
-    if (server.status !== 'open' || registrations.has(server.host)) {
+    railHosts.add(server.host);
+
+    if (server.status !== 'open') {
+      continue;
+    }
+
+    if (registrations.get(server.host)?.status === 'registered') {
       continue;
     }
 
     const conn = getConnection(server.host);
 
-    if (!conn || !reefFeaturesSelector(conn.store.getState()).push) {
+    if (!conn) {
+      continue;
+    }
+
+    const hasReef = pluginsMetadataSelector(conn.store.getState()).some(
+      (p) => p.pluginId === 'reef'
+    );
+
+    if (!hasReef) {
+      setStatus(server.host, server.name, 'no-plugin');
       continue;
     }
 
@@ -126,6 +184,7 @@ const registerPushTopicWithServers = async (): Promise<void> => {
       })) as PushInfoResponse | undefined;
 
       if (!info?.ok || !info.method || info.method === 'off') {
+        setStatus(server.host, server.name, 'push-off');
         continue;
       }
 
@@ -133,7 +192,8 @@ const registerPushTopicWithServers = async (): Promise<void> => {
         info.method === 'fcm' ? await getFcmToken() : getOrCreatePushTopic();
 
       if (!topic) {
-        continue; // fcm server but this build has no Firebase config
+        setStatus(server.host, server.name, 'fcm-unavailable');
+        continue;
       }
 
       const res = (await conn.trpc.plugins.executeAction.mutate({
@@ -143,19 +203,43 @@ const registerPushTopicWithServers = async (): Promise<void> => {
       })) as RegisterResponse | undefined;
 
       if (res?.ok) {
-        registrations.set(server.host, {
-          host: server.host,
-          serverName: server.name,
-          ntfyServerUrl:
-            info.method === 'ntfy'
-              ? info.ntfyServerUrl || 'https://ntfy.sh'
-              : undefined
-        });
-        notify();
+        setStatus(
+          server.host,
+          server.name,
+          'registered',
+          info.method === 'ntfy'
+            ? info.ntfyServerUrl || 'https://ntfy.sh'
+            : undefined
+        );
+      } else {
+        setStatus(server.host, server.name, 'error');
       }
-    } catch {
-      // plugin missing/erroring — retried on the next tick
+    } catch (err) {
+      // FORBIDDEN = the role lacks USE_PLUGINS — the #1 silent setup trap.
+      const message = err instanceof Error ? err.message : String(err);
+
+      setStatus(
+        server.host,
+        server.name,
+        message.includes('FORBIDDEN') || message.includes('permission')
+          ? 'no-permission'
+          : 'error'
+      );
     }
+  }
+
+  // Servers removed from the rail shouldn't linger in the settings UI.
+  let removed = false;
+
+  for (const host of registrations.keys()) {
+    if (!railHosts.has(host)) {
+      registrations.delete(host);
+      removed = true;
+    }
+  }
+
+  if (removed) {
+    notify();
   }
 };
 

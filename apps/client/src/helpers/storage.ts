@@ -61,7 +61,9 @@ export enum LocalStorageKey {
   // channel ids are per-server, so this must not be shared globally. (M8)
   VOICE_CHAT_SIDEBAR = 'reef-voice-chat-sidebar',
   // Cross-server saved/bookmarked messages (client-local, REEF-exclusive).
-  SAVED_MESSAGES = 'reef-saved-messages'
+  SAVED_MESSAGES = 'reef-saved-messages',
+  // Android keep-alive foreground service toggle (default on).
+  BACKGROUND_CONNECTION = 'reef-background-connection'
 }
 
 export enum SessionStorageKey {
