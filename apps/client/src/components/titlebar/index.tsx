@@ -1,6 +1,47 @@
 import { getDesktopApi, isDesktop } from '@/helpers/desktop';
-import { Copy, Minus, Square, X } from 'lucide-react';
+import { useUpdateState } from '@/lib/update-state';
+import { CircleArrowDown, Copy, Minus, Square, X } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
+
+/**
+ * Discord-style update cue: a green arrow appears in the title bar corner when
+ * an update is actionable. Installed build: the update is already downloaded —
+ * click restarts REEF into the new version. Portable build: a newer release
+ * exists — click opens its download page (the window-open handler routes it to
+ * the system browser).
+ */
+const UpdateButton = memo(() => {
+  const update = useUpdateState();
+  const api = getDesktopApi();
+
+  if (update.status !== 'ready' && update.status !== 'available') {
+    return null;
+  }
+
+  const title =
+    update.status === 'ready'
+      ? `Update ready — restart to install REEF ${update.version}`
+      : `REEF ${update.version} is available — click to download`;
+
+  const onClick = () => {
+    if (update.status === 'ready') {
+      void api?.quitAndInstallUpdate();
+    } else if (update.status === 'available') {
+      window.open(update.url, '_blank', 'noopener');
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      className="app-no-drag flex h-8 w-12 items-center justify-center text-green-500 transition-colors hover:bg-muted hover:text-green-400"
+      title={title}
+      onClick={onClick}
+    >
+      <CircleArrowDown className="h-4 w-4 animate-pulse" />
+    </button>
+  );
+});
 
 /**
  * Custom window title bar for the Electron desktop shell (the window is
@@ -53,6 +94,7 @@ const Titlebar = memo(() => {
       </div>
 
       <div className="flex items-center">
+        <UpdateButton />
         <button
           type="button"
           className={control}

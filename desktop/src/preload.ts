@@ -19,6 +19,7 @@ const api = {
   isDesktop: true,
   platform: process.platform,
   getVersion: (): Promise<string> => ipcRenderer.invoke('app:getVersion'),
+  isPortable: (): Promise<boolean> => ipcRenderer.invoke('app:isPortable'),
   quitAndInstallUpdate: (): Promise<void> =>
     ipcRenderer.invoke('update:quitAndInstall'),
   onUpdateAvailable: (cb: (version: string) => void) => {

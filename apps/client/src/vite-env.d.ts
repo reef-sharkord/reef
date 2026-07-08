@@ -19,6 +19,8 @@ declare global {
     isDesktop: boolean;
     platform: string;
     getVersion: () => Promise<string>;
+    // optional: absent in desktop shells older than the update-button feature
+    isPortable?: () => Promise<boolean>;
     quitAndInstallUpdate: () => Promise<void>;
     onUpdateAvailable: (cb: (version: string) => void) => void;
     onUpdateProgress: (cb: (percent: number) => void) => void;
@@ -79,6 +81,8 @@ declare global {
   }
 
   const VITE_APP_VERSION: string;
+  // REEF release version (from desktop/package.json — the release tag source)
+  const VITE_REEF_VERSION: string;
 }
 
 // this provides type definitions for i18n setup

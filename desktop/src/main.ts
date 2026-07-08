@@ -361,8 +361,17 @@ const createWindow = () => {
   });
 };
 
+// The portable exe can't self-update (electron-updater only supports the
+// installed NSIS target); the renderer detects a newer GitHub release itself
+// and offers the download page instead.
+const isPortableBuild = !!process.env.PORTABLE_EXECUTABLE_DIR;
+
+// Re-check cadence: REEF often lives in the tray for days, so a launch-only
+// check would miss releases until the next restart.
+const UPDATE_RECHECK_MS = 4 * 60 * 60 * 1000;
+
 const setupAutoUpdates = () => {
-  if (!app.isPackaged) {
+  if (!app.isPackaged || isPortableBuild) {
     return;
   }
 
@@ -422,7 +431,13 @@ const setupAutoUpdates = () => {
     log.error('[auto-update] error', err);
   });
 
-  void autoUpdater.checkForUpdatesAndNotify();
+  // Plain checkForUpdates (no OS notification) — the renderer shows its own
+  // Discord-style update button in the title bar when the download is ready.
+  void autoUpdater.checkForUpdates();
+
+  setInterval(() => {
+    void autoUpdater.checkForUpdates();
+  }, UPDATE_RECHECK_MS);
 };
 
 // Single-instance: a second launch focuses the existing window instead of
@@ -452,6 +467,9 @@ if (!gotSingleInstanceLock) {
     }
 
     ipcMain.handle('app:getVersion', () => app.getVersion());
+    // Portable builds can't self-update; the renderer falls back to a GitHub
+    // release check and a download link.
+    ipcMain.handle('app:isPortable', () => isPortableBuild);
     // Triggered from the renderer (e.g. an in-app "Restart to update" button).
     ipcMain.handle('update:quitAndInstall', () => autoUpdater.quitAndInstall());
     // Renderer asks to bring the window forward (e.g. a notification click).

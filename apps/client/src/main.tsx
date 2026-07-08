@@ -20,11 +20,12 @@ import { Routing } from './components/routing/index.tsx';
 import { NativePushController } from './components/routing/native-push-controller.tsx';
 import { ReconnectController } from './components/routing/reconnect-controller.tsx';
 import { SavedServersController } from './components/routing/saved-servers-controller.tsx';
-import { UpdateNotifier } from './components/routing/update-notifier.tsx';
+import { UpdateController } from './components/routing/update-controller.tsx';
 import { ScreenSharePicker } from './components/screen-share-picker/index.tsx';
 import { ServerScreensProvider } from './components/server-screens/index.tsx';
 import { ThemeProvider } from './components/theme-provider/index.tsx';
 import { Titlebar } from './components/titlebar/index.tsx';
+import { UpdateBanner } from './components/update-banner/index.tsx';
 import { VoiceProvider } from './components/voice-provider/index.tsx';
 import { VoiceStoreProvider } from './components/voice-provider/voice-store-provider.tsx';
 import { exposePluginStore } from './features/server/plugins/plugin-store.ts';
@@ -66,9 +67,10 @@ createRoot(document.getElementById('root')!).render(
             <SavedServersController />
             <BackgroundConnectionController />
             <DesktopController />
-            <UpdateNotifier />
+            <UpdateController />
             <div className="flex h-dvh flex-col">
               <Titlebar />
+              <UpdateBanner />
               <div className="min-h-0 flex-1">
                 <VoiceStoreProvider>
                   <VoiceProvider>
