@@ -60,6 +60,25 @@ const setNotifPref = (host: string, key: TNotifPrefKey, value: boolean) => {
   writeMap(map);
 };
 
+// --- mute change listeners -------------------------------------------------
+// reef-prefs-sync pushes mute changes to the host's reef plugin (device sync);
+// the rail re-renders its mute badge. Listeners get the host that changed.
+type MuteListener = (host: string) => void;
+
+const muteListeners = new Set<MuteListener>();
+
+const subscribeMutePrefs = (listener: MuteListener): (() => void) => {
+  muteListeners.add(listener);
+
+  return () => {
+    muteListeners.delete(listener);
+  };
+};
+
+const notifyMuteChanged = (host: string) => {
+  muteListeners.forEach((listener) => listener(host));
+};
+
 // --- per-server mute -----------------------------------------------------------
 // A muted server suppresses notification popups + ping sounds for that server,
 // independent of the granular notification prefs. Stored as a host list.
@@ -93,6 +112,7 @@ const setServerMuted = (host: string, muted: boolean) => {
   }
 
   setLocalStorageItem(MUTED_KEY, JSON.stringify(current));
+  notifyMuteChanged(host);
 };
 
 // --- per-channel mute ----------------------------------------------------------
@@ -139,6 +159,7 @@ const setChannelMuted = (host: string, channelId: number, muted: boolean) => {
   }
 
   setLocalStorageItem(MUTED_CHANNELS_KEY, JSON.stringify(current));
+  notifyMuteChanged(host);
 };
 
 export {
@@ -148,5 +169,6 @@ export {
   isServerMuted,
   setChannelMuted,
   setNotifPref,
-  setServerMuted
+  setServerMuted,
+  subscribeMutePrefs
 };

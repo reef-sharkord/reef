@@ -54,6 +54,18 @@ Clients refresh on a slow poll (60s) plus immediately after setting their own.
 **Settings**
 - **Allow custom status** — default on.
 
+### Settings sync between a user's own devices
+`getSyncedPrefs` / `setSyncedPrefs` let each REEF user store one small blob
+(max 8 KB) of their own client settings on this server — today REEF uses it to
+sync muted channels and the server mute between desktop and phone. The plugin
+never interprets the blob; the client owns the schema and resolves conflicts
+last-write-wins via an `updatedAt` stamp (stale writes are rejected so the
+losing device pulls instead). A user can only ever read/write their own blob.
+Persisted in `synced-prefs.json` next to the plugin.
+
+**Settings**
+- **Allow settings sync** — default on.
+
 ### Bug reports / feature requests
 The `submitReport` action emails a user's bug report or feature request to the
 server operator through an HTTP mail relay. The relay key stays server-side;

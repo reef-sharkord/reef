@@ -5,7 +5,11 @@ import { removeServer } from '@/features/server/actions';
 import { useRailServers } from '@/hooks/use-connections';
 import { useInbox } from '@/hooks/use-inbox';
 import { setActiveHost, type RailServer } from '@/lib/connections';
-import { isServerMuted, setServerMuted } from '@/lib/notification-prefs';
+import {
+  isServerMuted,
+  setServerMuted,
+  subscribeMutePrefs
+} from '@/lib/notification-prefs';
 import {
   getAllRailCustom,
   getRailOrder,
@@ -31,7 +35,7 @@ import {
   Palette,
   Plus
 } from 'lucide-react';
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
 
 const initialsOf = (name: string) =>
@@ -76,12 +80,14 @@ const RailTile = memo(
     dragging
   }: TileProps) => {
     const { t } = useTranslation('sidebar');
-    const [muted, setMuted] = useState(() => isServerMuted(server.host));
+    // Live external read: mute sync (reef plugin) can flip this from another
+    // device, and the badge should follow without a remount.
+    const muted = useSyncExternalStore(subscribeMutePrefs, () =>
+      isServerMuted(server.host)
+    );
 
     const toggleMuted = () => {
-      const next = !muted;
-      setServerMuted(server.host, next);
-      setMuted(next);
+      setServerMuted(server.host, !muted);
     };
 
     const name = custom.name || server.name;

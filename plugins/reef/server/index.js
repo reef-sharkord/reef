@@ -17,6 +17,7 @@
 // More features (presence / custom status, bug reports) will hang off this same
 // plugin, each behind its own on/off setting.
 
+import { createSyncedPrefs } from './prefs.js';
 import { createPush } from './push.js';
 
 const GIF_PER_PAGE = 24;
@@ -263,6 +264,14 @@ export async function onLoad(ctx) {
       defaultValue: ''
     },
     {
+      key: 'syncEnabled',
+      name: 'Allow settings sync',
+      description:
+        'Let each REEF user store a small blob of their own client settings (muted channels, server mute) on this server, so their desktop and phone stay in sync. Capped at 8 KB per user; only the user themself can read or write it.',
+      type: 'boolean',
+      defaultValue: true
+    },
+    {
       key: 'pushIncludeText',
       name: 'Include message text in pushes',
       description:
@@ -334,6 +343,51 @@ export async function onLoad(ctx) {
     }
   });
 
+  // --- synced client prefs (mute sync between a user's own devices) ----------
+  const syncedPrefs = createSyncedPrefs(ctx);
+
+  ctx.actions.register({
+    name: 'getSyncedPrefs',
+    description:
+      "Read the calling user's synced client-prefs blob (device settings sync).",
+    execute: async (invoker) => {
+      push.touch(invoker && invoker.userId);
+
+      if (!settings.get('syncEnabled')) {
+        return { ok: false, reason: 'disabled' };
+      }
+
+      const entry = syncedPrefs.get(invoker && invoker.userId);
+
+      return {
+        ok: true,
+        blob: entry ? entry.blob : null,
+        updatedAt: entry ? entry.updatedAt : null
+      };
+    }
+  });
+
+  ctx.actions.register({
+    name: 'setSyncedPrefs',
+    description:
+      "Store the calling user's synced client-prefs blob (last write wins; stale writes are rejected).",
+    execute: async (invoker, payload) => {
+      push.touch(invoker && invoker.userId);
+
+      if (!settings.get('syncEnabled')) {
+        return { ok: false, reason: 'disabled' };
+      }
+
+      const result = syncedPrefs.set(
+        invoker && invoker.userId,
+        payload && payload.blob,
+        payload && payload.updatedAt
+      );
+
+      return result === 'ok' ? { ok: true } : { ok: false, reason: result };
+    }
+  });
+
   ctx.events.on('message:created', (payload) => {
     // fire-and-forget: pushes must never block message delivery
     void push.onMessageCreated(payload).catch((error) => {
@@ -371,7 +425,8 @@ export async function onLoad(ctx) {
           savedMessages: !!settings.get('savedMessagesEnabled'),
           reports: reportsAvailable(),
           presence: !!settings.get('presenceEnabled'),
-          push: push.available()
+          push: push.available(),
+          sync: !!settings.get('syncEnabled')
         }
       };
     }

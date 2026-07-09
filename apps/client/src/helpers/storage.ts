@@ -63,7 +63,10 @@ export enum LocalStorageKey {
   // Cross-server saved/bookmarked messages (client-local, REEF-exclusive).
   SAVED_MESSAGES = 'reef-saved-messages',
   // Android keep-alive foreground service toggle (default on).
-  BACKGROUND_CONNECTION = 'reef-background-connection'
+  BACKGROUND_CONNECTION = 'reef-background-connection',
+  // Per-host updatedAt stamps for synced client prefs (mute sync via the reef
+  // plugin): { [host]: number }.
+  SYNCED_PREFS_META = 'reef-synced-prefs-meta'
 }
 
 export enum SessionStorageKey {

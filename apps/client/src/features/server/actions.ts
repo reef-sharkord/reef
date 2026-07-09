@@ -18,6 +18,7 @@ import {
 } from '@/lib/connections';
 import { getRailOrder, sortHostsByOrder } from '@/lib/rail-prefs';
 import { fetchReefFeatures } from '@/lib/reef-features';
+import { setupMutePrefsSync } from '@/lib/reef-prefs-sync';
 import {
   fetchPresences,
   PRESENCE_POLL_MS,
@@ -232,6 +233,15 @@ export const joinServer = async (
       previousUnsub();
     };
   });
+
+  // Mute sync (muted channels + server mute) through this server's reef
+  // plugin, so one user's desktop and phone converge: reconcile on join, slow
+  // pull afterwards, debounced push on local change (lib/reef-prefs-sync).
+  const syncHost = targetHost ?? getActiveHost();
+
+  if (syncHost && data.pluginsMetadata.some((p) => p.pluginId === 'reef')) {
+    setupMutePrefsSync(trpc, syncHost);
+  }
 
   return {
     showWelcomeDialog: data.showWelcomeDialog
