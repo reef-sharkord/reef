@@ -1,8 +1,17 @@
-import type { IRootState } from '@/features/store';
+import {
+  runWithActiveStore,
+  type IRootState,
+  type ServerStore
+} from '@/features/store';
+import {
+  getConnection,
+  getHostForStore,
+  type TRPCClient
+} from '@/lib/connections';
 import { getTRPCClient } from '@/lib/trpc';
 import { DEFAULT_MESSAGES_LIMIT, type TJoinedMessage } from '@sharkord/shared';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useStore } from 'react-redux';
 import { addMessages, addThreadMessages, clearThreadMessages } from './actions';
 import {
   findMessageElement,
@@ -92,27 +101,50 @@ type TFetchPage = (
   cursor: number | null
 ) => Promise<{ nextCursor: number | null }>;
 
-// fetch a page of channel messages from the server
-const fetchChannelMessagesPage = async (input: {
-  channelId: number;
-  cursor: number | null;
-  limit: number;
-  targetMessageId?: number;
-}) => {
-  const trpcClient = getTRPCClient();
+/**
+ * The server this component renders under (its Provider's store) — NOT the
+ * active one. History fetches must query THIS server and land in THIS server's
+ * store: resolving them against whatever is active when the await settles let
+ * a fetch that was in flight during a server switch dump one server's messages
+ * into another server's store under the same numeric channelId, showing wrong
+ * messages attributed to wrong users (tester feedback, 2026-07-09).
+ */
+const useBoundServer = () => {
+  const boundStore = useStore() as ServerStore;
+  const host = getHostForStore(boundStore);
+  const conn = host ? getConnection(host) : undefined;
 
+  return {
+    boundStore,
+    trpc: conn?.trpc ?? getTRPCClient()
+  };
+};
+
+// fetch a page of channel messages from the given server
+const fetchChannelMessagesPage = async (
+  trpcClient: TRPCClient,
+  input: {
+    channelId: number;
+    cursor: number | null;
+    limit: number;
+    targetMessageId?: number;
+  }
+) => {
   return trpcClient.messages.get.query(input);
 };
 
-// reverse (newest-first -> oldest-first) and store messages
+// reverse (newest-first -> oldest-first) and store messages in the given store
 const storeChannelMessages = (
+  boundStore: ServerStore,
   channelId: number,
   rawPage: TJoinedMessage[],
   opts?: { prepend?: boolean }
 ) => {
   const page = [...rawPage].reverse();
 
-  addMessages(channelId, page, opts);
+  runWithActiveStore(boundStore, () => {
+    addMessages(channelId, page, opts);
+  });
 };
 
 const usePaginatedMessages = (
@@ -180,22 +212,26 @@ const usePaginatedMessages = (
 export const useMessages = (channelId: number) => {
   const messages = useMessagesByChannelId(channelId);
   const inited = useRef(false);
+  const { boundStore, trpc } = useBoundServer();
 
   const fetchPage = useCallback(
     async (cursorToFetch: number | null) => {
-      const { messages: rawPage, nextCursor } = await fetchChannelMessagesPage({
-        channelId,
-        cursor: cursorToFetch,
-        limit: DEFAULT_MESSAGES_LIMIT
-      });
+      const { messages: rawPage, nextCursor } = await fetchChannelMessagesPage(
+        trpc,
+        {
+          channelId,
+          cursor: cursorToFetch,
+          limit: DEFAULT_MESSAGES_LIMIT
+        }
+      );
 
-      storeChannelMessages(channelId, rawPage, {
+      storeChannelMessages(boundStore, channelId, rawPage, {
         prepend: cursorToFetch !== null
       });
 
       return { nextCursor };
     },
-    [channelId]
+    [channelId, boundStore, trpc]
   );
 
   const paginated = usePaginatedMessages(messages, fetchPage);
@@ -219,14 +255,14 @@ export const useMessages = (channelId: number) => {
         return;
       }
 
-      const { messages: rawPage } = await fetchChannelMessagesPage({
+      const { messages: rawPage } = await fetchChannelMessagesPage(trpc, {
         channelId,
         cursor: null,
         limit: DEFAULT_MESSAGES_LIMIT,
         targetMessageId: messageId
       });
 
-      storeChannelMessages(channelId, rawPage, { prepend: true });
+      storeChannelMessages(boundStore, channelId, rawPage, { prepend: true });
 
       const element = await waitForMessageElement(messageId);
 
@@ -234,7 +270,7 @@ export const useMessages = (channelId: number) => {
         highlightMessageElement(element, highlightTime);
       }
     },
-    [channelId]
+    [channelId, boundStore, trpc]
   );
 
   return { ...paginated, scrollToMessage };
@@ -247,23 +283,24 @@ export const useThreadMessagesByParentId = (parentMessageId: number) =>
 
 export const useThreadMessages = (parentMessageId: number) => {
   const messages = useThreadMessagesByParentId(parentMessageId);
+  const { boundStore, trpc } = useBoundServer();
 
   const fetchPage = useCallback(
     async (cursorToFetch: number | null) => {
-      const trpcClient = getTRPCClient();
-
       const { messages: page, nextCursor } =
-        await trpcClient.messages.getThread.query({
+        await trpc.messages.getThread.query({
           parentMessageId,
           cursor: cursorToFetch,
           limit: DEFAULT_MESSAGES_LIMIT
         });
 
-      addThreadMessages(parentMessageId, page);
+      runWithActiveStore(boundStore, () => {
+        addThreadMessages(parentMessageId, page);
+      });
 
       return { nextCursor };
     },
-    [parentMessageId]
+    [parentMessageId, boundStore, trpc]
   );
 
   const paginated = usePaginatedMessages(messages, fetchPage, {
