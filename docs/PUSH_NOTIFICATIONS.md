@@ -14,6 +14,16 @@ Two people are involved:
 > already get notifications with zero setup. Push is only for when the app is
 > fully closed or was killed by Android.
 
+### How notifications reach you (two paths)
+
+- **REEF is running** (foreground or background): the app itself notifies you,
+  driven by the switches at the top of **Settings → Notifications** — on the
+  phone, *Mentions*, *Direct Messages* and *Replies to Me* are **on by
+  default**. No push involved; the server deliberately does not double-send.
+- **REEF is closed / killed**: your server pushes DMs and @mentions through
+  ntfy — that's what this guide sets up. The server treats your app as closed
+  after ~3 minutes of silence.
+
 ---
 
 ## Part 1 — Server admin setup (ntfy)
@@ -43,8 +53,11 @@ you self-host the relay.
 2. Open ntfy once and allow it to show notifications.
 3. In REEF: **Settings → Notifications → "Push while REEF is closed"**. Each
    of your servers is listed with its push status. Next to a server marked
-   **Ready**, tap **Subscribe in ntfy** — it opens the ntfy app on your
-   private topic. Tap **Subscribe** there and you're done.
+   **Ready**, tap **Subscribe in ntfy** — it opens the ntfy **app** directly
+   on your private topic, already subscribed (this needs the ntfy app from
+   step 1 — the button does nothing without it). Prefer doing it by hand? The
+   copy button next to it copies your topic name to paste into ntfy's
+   "Subscribe to topic".
 4. Recommended: in the ntfy app's settings, allow it to run without battery
    restrictions (ntfy will prompt you). Otherwise some phones (especially
    Samsung/Xiaomi) delay or drop notifications to save power.
@@ -69,7 +82,7 @@ closed"** shows a status per server.
 
 | Status in REEF | What it means | Fix |
 |---|---|---|
-| **Ready — this server can push to this device** | Registration worked. | If you still get nothing: check Part 2 steps 2–4 (ntfy installed, subscribed, battery unrestricted). |
+| **Ready — this server can push to this device** | Registration worked. | If you still get nothing: check Part 2 steps 2–4 (ntfy installed, subscribed, battery unrestricted). If it only fails while REEF is *open*, check the notification switches at the top of Settings → Notifications instead — that path doesn't use push at all. |
 | **This server doesn't have the REEF plugin installed** | Push is a plugin feature. | Admin: install the [reef plugin](../plugins/reef/README.md#install). |
 | **The server admin hasn't enabled push notifications** | Plugin is there, but **Push method** is `off`. | Admin: Part 1, step 1. |
 | **Your role can't use plugins here** | Your role lacks the **Use Plugins** permission. | Admin: Part 1, step 2. |

@@ -1,3 +1,4 @@
+import { isNativeApp } from '@/helpers/native';
 import { getLocalStorageItemBool, LocalStorageKey } from '@/helpers/storage';
 import type { TDevices, TMessageJumpToTarget } from '@/types';
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
@@ -44,17 +45,22 @@ const initialState: TAppState = {
     LocalStorageKey.BROWSER_NOTIFICATIONS,
     false
   ),
+  // On the phone, mentions/DMs/replies notify by default (all-messages stays
+  // opt-in). The reef plugin deliberately suppresses ntfy push while the app
+  // is alive because these local notifications cover that case — with them
+  // defaulted off, a fresh install was silent in every state (tester
+  // feedback, 2026-07-09).
   browserNotificationsForMentions: getLocalStorageItemBool(
     LocalStorageKey.BROWSER_NOTIFICATIONS_FOR_MENTIONS,
-    false
+    isNativeApp()
   ),
   browserNotificationsForDms: getLocalStorageItemBool(
     LocalStorageKey.BROWSER_NOTIFICATIONS_FOR_DMS,
-    false
+    isNativeApp()
   ),
   browserNotificationsForReplies: getLocalStorageItemBool(
     LocalStorageKey.BROWSER_NOTIFICATIONS_FOR_REPLIES,
-    false
+    isNativeApp()
   ),
   messageJumpTarget: undefined,
   // Seeded per-host on connect via applyVoiceChatSidebar — never from a global

@@ -27,9 +27,10 @@ import {
   Group,
   Switch
 } from '@sharkord/ui';
-import { BellRing, CheckCircle2, CircleAlert } from 'lucide-react';
+import { BellRing, CheckCircle2, CircleAlert, Copy } from 'lucide-react';
 import { memo, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { DndSettings } from './dnd-settings';
 import { SoundSettings } from './sound-settings';
 
@@ -50,10 +51,26 @@ const STATUS_I18N_KEY: Record<TPushRegistration['status'], string> = {
  * server delivers via ntfy — the button that opens this device's private
  * topic in the ntfy app. Always visible on mobile so a broken setup explains
  * itself instead of hiding (tester feedback, 2026-07-08).
+ *
+ * Subscribe uses ntfy's `ntfy://<host>/<topic>` deep link, which opens the
+ * ntfy APP and subscribes in one tap — a plain https link only opens the
+ * browser and forces the user to copy the topic by hand (tester feedback,
+ * 2026-07-09; ntfy docs say https subscribe links are not possible on
+ * Android). The copy button covers the no-app / self-hosted edge cases.
  */
 const PushServerRow = memo(({ reg }: { reg: TPushRegistration }) => {
   const { t } = useTranslation('settings');
   const ready = reg.status === 'registered';
+  const topic = getOrCreatePushTopic();
+
+  const copyTopic = async () => {
+    try {
+      await navigator.clipboard.writeText(topic);
+      toast.success(t('ntfyTopicCopied'));
+    } catch {
+      toast.error(t('ntfyTopicCopyFailed'));
+    }
+  };
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-md border p-3">
@@ -71,16 +88,25 @@ const PushServerRow = memo(({ reg }: { reg: TPushRegistration }) => {
         </div>
       </div>
       {ready && reg.ntfyServerUrl && (
-        <Button asChild variant="outline" size="sm" className="shrink-0">
-          <a
-            href={`${reg.ntfyServerUrl}/${getOrCreatePushTopic()}`}
-            target="_blank"
-            rel="noopener noreferrer"
+        <div className="flex shrink-0 items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <a
+              href={`${reg.ntfyServerUrl.replace(/^https?:\/\//, 'ntfy://')}/${topic}`}
+            >
+              <BellRing className="mr-2 h-4 w-4" />
+              {t('ntfySubscribeBtn')}
+            </a>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('ntfyCopyTopic')}
+            title={t('ntfyCopyTopic')}
+            onClick={() => void copyTopic()}
           >
-            <BellRing className="mr-2 h-4 w-4" />
-            {t('ntfySubscribeBtn')}
-          </a>
-        </Button>
+            <Copy className="h-4 w-4" />
+          </Button>
+        </div>
       )}
     </div>
   );

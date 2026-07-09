@@ -5,6 +5,7 @@ import {
   getHostFromServer,
   getUrlForHost
 } from '@/helpers/get-file-url';
+import { isStandalone } from '@/helpers/standalone';
 import { setRestoringSavedServers } from '@/lib/boot-state';
 import {
   closeConnection,
@@ -461,21 +462,43 @@ export const restoreSavedServers = async () => {
  */
 export const resumeDroppedServers = async (): Promise<void> => {
   const viewedHost = getActiveHost();
-  let resumedAny = false;
+  const dropped = getSavedServers().filter(
+    (saved) => getConnection(saved.host)?.status === 'closed'
+  );
 
-  for (const saved of getSavedServers()) {
-    const existing = getConnection(saved.host);
-
-    if (existing && existing.status === 'closed') {
-      await reconnectSavedServer(saved);
-      resumedAny = true;
-    }
+  if (dropped.length === 0) {
+    return;
   }
 
-  // reconnectSavedServer activates each host as it joins; give focus back to
-  // the server the user was actually looking at.
-  if (resumedAny && viewedHost && getConnection(viewedHost)) {
-    setActiveHost(viewedHost);
+  // The rejoins steal active focus one by one (openConnection makes each host
+  // active), which used to flash the plain loading screen when tabbing back in
+  // after a long background stint (tester feedback, 2026-07-09). When the
+  // server the user was viewing is itself dropped — the long-background case —
+  // cover the whole resume with the same landing screen as boot. A quick tab
+  // switch with live sockets never reaches this point (dropped is empty), and
+  // a background-only flap keeps the veil away from an actively-used UI.
+  const viewedDropped =
+    !viewedHost || dropped.some((saved) => saved.host === viewedHost);
+  const showVeil = isStandalone() && viewedDropped;
+
+  if (showVeil) {
+    setRestoringSavedServers(true);
+  }
+
+  try {
+    for (const saved of sortHostsByOrder(dropped, getRailOrder())) {
+      await reconnectSavedServer(saved);
+    }
+
+    // reconnectSavedServer activates each host as it joins; give focus back to
+    // the server the user was actually looking at.
+    if (viewedHost && getConnection(viewedHost)) {
+      setActiveHost(viewedHost);
+    }
+  } finally {
+    if (showVeil) {
+      setRestoringSavedServers(false);
+    }
   }
 };
 
